@@ -1,65 +1,86 @@
-import asyncio
-import hashlib
-import logging
-import os
 import re
 import sqlite3
-import threading
-from dataclasses import dataclass
-from datetime import datetime
-from typing import List, Optional
-from urllib.parse import urljoin, urlparse
-
+import asyncio
 import aiohttp
-import httpx
+import hashlib
+import logging
+import threading
 import unicodedata
-from aiohttp import TCPConnector, ClientTimeout
+from datetime import datetime
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
-from cachetools import TTLCache
-from flask import Flask, request, render_template, jsonify
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from flask import Flask, request, render_template
+from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
-from pydantic import BaseSettings, ValidationError
-from rank_bm25 import BM25Okapi
-from sklearn.feature_extraction.text import TfidfVectorizer
+from dataclasses import dataclass
+from typing import List, Optional
+from aiohttp import TCPConnector, ClientTimeout
+import requests
 
 
-# --- Configuração Avançada ---
-class AppSettings(BaseSettings):
-    MAX_DEPTH: int = 3
-    RATE_LIMIT: float = 1.2
-    REQUEST_TIMEOUT: int = 15
-    MAX_CONNECTIONS: int = 50
-    DB_PATH: str = "easblue_plus.db"
-    SAFETY_THRESHOLD: float = 0.25
-    CRAWL_INTERVAL: int = 3600
-    SEED_URLS: List[str] = [
-        "https://www.infoescola.com/",
-        "https://www.gov.br/pt-br/noticias",
-        "https://brasil.un.org/pt-br/sdgs",
-        "https://brasilescola.uol.com.br/"
-    ]
-    BM25_WEIGHT: float = 0.7
-    TFIDF_WEIGHT: float = 0.3
-    CACHE_SIZE: int = 1000
-    CACHE_TTL: int = 300
+# Configuração de adaptadores para datetime
+def adapt_datetime(dt):
+    return dt.isoformat()
 
-    class Config:
-        env_file = ".env"
-        env_prefix = "EASBLUE_"
 
-try:
-    SETTINGS = AppSettings()
-except ValidationError as e:
-    logging.error(f"Erro de configuração: {e}")
-    raise
+sqlite3.register_adapter(datetime, adapt_datetime)
 
-# --- Modelos de Dados ---
+DEFAULT_BASE_URLS = [
+    "https://www.gov.br/pt-br/noticias",
+    "https://www.infoescola.com/",
+    "https://brasil.un.org/pt-br/sdgs",
+    "https://brasilescola.uol.com.br/",
+    "https://g1.globo.com/",
+    "https://www.folha.uol.com.br/",
+    "https://www.bbc.com/portuguese",
+    "https://oglobo.globo.com/",
+    "https://www.estadao.com.br/"
+]
+ALLOWED_DOMAINS = [
+    ".gov.br", ".un.org", "wikipedia.org",
+    "folha.uol.com.br", "g1.globo.com",
+    "infoescola.com", "brasilescola.uol.com.br",
+    "bbc.com", "oglobo.globo.com", "estadao.com.br"
+]
+
+DEFAULT_CONFIG = {
+    "MAX_DEPTH": 2,
+    "RATE_LIMIT": 1.5,
+    "REQUEST_TIMEOUT": 10,
+    "MAX_CONNECTIONS": 30,
+    "DB_PATH": "easblue.db",
+    "SAFETY_THRESHOLD": 0.3,
+
+    "ALLOWED_DOMAINS": ALLOWED_DOMAINS
+}
+
+
+def discover_seed_urls(base_url: str, allowed_domains: list = None) -> list:
+    try:
+        response = requests.get(base_url, timeout=10)
+        response.raise_for_status()
+    except Exception as e:
+        print(f"Erro ao acessar {base_url}: {e}")
+        return []
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    found_urls = set()
+    for tag in soup.find_all('a', href=True):
+        url = urljoin(base_url, tag['href'])
+        if allowed_domains:
+            if any(domain.lower() in url.lower() for domain in allowed_domains):
+                found_urls.add(url)
+        else:
+            found_urls.add(url)
+    return list(found_urls)
+
+
+# --- Modelos de dados ---
 @dataclass
 class Page:
     url: str
+    title: str
     content: str
     simplified_content: str
     tokens: str
@@ -68,6 +89,7 @@ class Page:
     domain: str
     checksum: str
 
+
 @dataclass
 class SearchResult:
     url: str
@@ -75,23 +97,17 @@ class SearchResult:
     snippet: str
     relevance: float
     safety_rating: str
-    last_crawled: str
 
-# --- Configuração de Logging ---
+
+# --- Configuração de logging ---
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("easblue.log"),
-        logging.StreamHandler()
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger("EasBlue+")
+logger = logging.getLogger("EasBlue")
 
-# --- Cache ---
-search_cache = TTLCache(maxsize=SETTINGS.CACHE_SIZE, ttl=SETTINGS.CACHE_TTL)
 
-# --- Gerenciamento de Banco de Dados ---
+# --- Gerenciamento de banco de dados com migrações ---
 class DatabaseManager:
     _local = threading.local()
 
@@ -99,9 +115,8 @@ class DatabaseManager:
     def get_connection(cls):
         if not hasattr(cls._local, "conn"):
             cls._local.conn = sqlite3.connect(
-                SETTINGS.DB_PATH,
-                check_same_thread=False,
-                timeout=15
+                DEFAULT_CONFIG["DB_PATH"],
+                check_same_thread=False
             )
             cls._run_migrations(cls._local.conn)
         return cls._local.conn
@@ -111,6 +126,7 @@ class DatabaseManager:
         migrations = [
             """CREATE TABLE IF NOT EXISTS pages (
                 url TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
                 content TEXT NOT NULL,
                 simplified_content TEXT NOT NULL,
                 tokens TEXT NOT NULL,
@@ -121,7 +137,6 @@ class DatabaseManager:
             )""",
             "CREATE INDEX IF NOT EXISTS idx_tokens ON pages(tokens)",
             "CREATE INDEX IF NOT EXISTS idx_safety ON pages(safety_score)",
-            "CREATE INDEX IF NOT EXISTS idx_domain ON pages(domain)",
             """CREATE TABLE IF NOT EXISTS schema_version (
                 version INTEGER PRIMARY KEY
             )""",
@@ -132,366 +147,373 @@ class DatabaseManager:
                 try:
                     conn.execute(migration)
                 except sqlite3.Error as e:
-                    logger.error(f"Erro na migração: {str(e)}")
+                    logger.error("Erro na migração: %s", str(e))
             conn.commit()
 
-# --- Processamento de Texto Melhorado ---
-class AdvancedContentProcessor:
+
+# --- Processamento de conteúdo ---
+class ContentProcessor:
     def __init__(self):
-        self._initialize_nltk()
         self.stemmer = SnowballStemmer("portuguese")
-        self.stop_words = set(stopwords.words("portuguese"))
-        logger.info("Processador de conteúdo avançado inicializado")
+        self.stop_words = self._load_stopwords()
+        logger.info("Processador de conteúdo inicializado")
 
-    def _initialize_nltk(self):
-        try:
-            # Tenta carregar as stopwords; se não existirem, baixa-as
-            stopwords.words("portuguese")
-        except LookupError:
-            import nltk
-            nltk.download('stopwords')
-
-    def _remove_accents(self, text: str) -> str:
-        return ''.join(
-            c for c in unicodedata.normalize('NFD', text)
-            if unicodedata.category(c) != 'Mn'
-        )
+    def _load_stopwords(self):
+        base_stopwords = set(stopwords.words("portuguese"))
+        custom_stopwords = {
+            'também', 'após', 'segundo', 'mesmo', 'outro', 'outra', 'outros',
+            'outras', 'etc', 'aquele', 'aquela', 'isso', 'esse', 'essa', 'disso',
+            'desse', 'dessa', 'entre', 'sobre', 'através', 'quando', 'onde', 'como',
+            'porque', 'porquê', 'pois', 'assim', 'agora', 'ainda', 'já', 'antes',
+            'depois', 'sempre', 'nunca', 'muito', 'pouco', 'muitos', 'poucos',
+            'mais', 'menos', 'qual', 'quais', 'qualquer', 'algum', 'alguma',
+            'alguns', 'algumas', 'todo', 'toda', 'todos', 'todas', 'nada', 'ninguém',
+            'nenhum', 'nenhuma', 'cada', 'outrem', 'tampouco', 'de', 'da', 'do',
+            'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'pelo',
+            'pela', 'pelos', 'pelas', 'com', 'sem', 'sob', 'sobre', 'trás', 'ante',
+            'até', 'após', 'perante', 'mas', 'e', 'ou', 'então', 'portanto', 'pois',
+            'porquanto', 'contudo', 'todavia', 'embora', 'logo', 'porém', 'se',
+            'porque', 'assim', 'que', 'qual', 'quem', 'cujo', 'cuja', 'cujos',
+            'cujas', 'quando', 'onde', 'como', 'quanto', 'quantos', 'quantas'
+        }
+        return base_stopwords.union(custom_stopwords)
 
     def process_text(self, text: str) -> str:
-        text = self._remove_accents(text)
-        text = re.sub(r'\s+', ' ', text)
-        return re.sub(r'[^\w\s]', '', text).lower()
+        text = unicodedata.normalize('NFKD', text).lower()
+        text = re.sub(r'-', ' ', text)
+        text = re.sub(r'https?://\S+', '', text)
+        text = re.sub(r'\b\d+\b', '', text)
+        text = re.sub(r'[^\w\s]', '', text, flags=re.UNICODE)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
 
     def tokenize(self, text: str) -> str:
-        return ' '.join([
-            self.stemmer.stem(word) for word in text.split()
-            if word not in self.stop_words and len(word) > 2
-        ])
+        words = text.split()
+        processed_words = []
+        for word in words:
+            if len(word) > 2 and word not in self.stop_words:
+                processed_words.append(self.stemmer.stem(word))
+        return ' '.join(processed_words)
 
-# --- Sistema de Segurança Aprimorado ---
-class EnhancedSecurityEngine:
-    RISK_PATTERNS = [
-        (r"\b(vacina .* mata|cloroquina cura)\b", 0.8),
-        (r"\b(senha|cpf|cart[ãa]o)\b", 0.3),
-        (r"\b(urgente!|promoção)\b", 0.2)
-    ]
 
+# --- Verificação de segurança e análise de conteúdo ---
+class SecurityEngine:
     @staticmethod
     def generate_checksum(content: str) -> str:
-        return hashlib.sha3_256(content.encode()).hexdigest()
+        return hashlib.sha256(content.encode()).hexdigest()
 
     @staticmethod
-    async def check_google_safe_browsing(target_url: str) -> bool:
-        api_key = os.getenv("GOOGLE_SAFE_BROWSING_API_KEY")
-        if not api_key:
-            return True
-
-        safe_browsing_url = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
-        payload = {
-            "client": {"clientId": "EasBlue", "clientVersion": "6.0"},
-            "threatInfo": {
-                "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING"],
-                "platformTypes": ["ANY_PLATFORM"],
-                "threatEntryTypes": ["URL"],
-                "threatEntries": [{"url": target_url}]
-            }
-        }
+    async def verify_url(url: str) -> bool:
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{safe_browsing_url}?key={api_key}",
-                    json=payload,
-                    timeout=5
-                )
-                return not bool(response.json().get('matches'))
+            async with aiohttp.ClientSession() as session:
+                async with session.head(url, timeout=5) as response:
+                    return response.status == 200
         except Exception as e:
-            logger.error(f"Erro Safe Browsing: {str(e)}")
-            return True
+            logger.warning("Falha na verificação de URL %s: %s", url, str(e))
+            return False
 
     @classmethod
     def analyze_content(cls, text: str) -> float:
         text = text.lower()
         danger = 0.0
-        for pattern, score in cls.RISK_PATTERNS:
+        risk_patterns = [
+            (r"\b(vacina .* mata|cloroquina cura)\b", 0.8),
+            (r"\b(senha|cpf|cart[ãa]o)\b", 0.3),
+            (r"\b(urgente!|promoção)\b", 0.2)
+        ]
+        for pattern, score in risk_patterns:
             danger += len(re.findall(pattern, text)) * score
         return min(danger, 1.0)
 
-# --- Crawler Aprimorado ---
-class EnhancedCrawler:
+
+# --- Sistema de crawling ---
+class CrawlerService:
     def __init__(self):
-        self.processor = AdvancedContentProcessor()
-        self.robots_cache = {}
-        logger.info("Crawler avançado inicializado")
-
-    async def _get_robots_txt(self, domain: str) -> Optional[str]:
-        if domain in self.robots_cache:
-            return self.robots_cache[domain]
-
-        robots_url = f"https://{domain}/robots.txt"
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(robots_url, timeout=5)
-                if response.status_code == 200:
-                    self.robots_cache[domain] = response.text
-                    return response.text
-        except Exception as e:
-            logger.warning(f"Erro ao buscar robots.txt: {str(e)}")
-        return None
-
-    async def _can_fetch(self, url: str) -> bool:
-        parsed = urlparse(url)
-        robots_txt = await self._get_robots_txt(parsed.netloc)
-        if robots_txt:
-            from urllib.robotparser import RobotFileParser
-            rp = RobotFileParser()
-            rp.parse(robots_txt.splitlines())
-            return rp.can_fetch("*", url)
-        return True
-
-    async def _process_page(self, session: aiohttp.ClientSession, url: str) -> bool:
-        try:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    logger.error(f"Falha ao acessar {url}: {response.status}")
-                    return False
-                content = await response.text()
-        except Exception as e:
-            logger.error(f"Erro ao buscar página {url}: {str(e)}")
-            return False
-
-        # Processamento do conteúdo
-        processor = self.processor
-        simplified = processor.process_text(content)
-        tokens = processor.tokenize(simplified)
-        safety_score = EnhancedSecurityEngine.analyze_content(simplified)
-        checksum = EnhancedSecurityEngine.generate_checksum(content)
-        domain = urlparse(url).netloc
-        last_crawled = datetime.now().isoformat()
-
-        # Salva no banco de dados
-        conn = DatabaseManager.get_connection()
-        try:
-            with conn:
-                conn.execute("""
-                    INSERT OR REPLACE INTO pages (url, content, simplified_content, tokens, safety_score, last_crawled, domain, checksum)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (url, content, simplified, tokens, safety_score, last_crawled, domain, checksum))
-            logger.info(f"Página processada e salva: {url}")
-            return True
-        except Exception as e:
-            logger.error(f"Erro ao salvar página {url}: {str(e)}")
-            return False
-
-    async def _extract_links(self, session: aiohttp.ClientSession, url: str, depth: int) -> List[tuple]:
-        try:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    return []
-                html = await response.text()
-        except Exception as e:
-            logger.error(f"Erro ao extrair links de {url}: {str(e)}")
-            return []
-
-        soup = BeautifulSoup(html, "html.parser")
-        links = []
-        for tag in soup.find_all("a", href=True):
-            link = urljoin(url, tag["href"])
-            parsed_link = urlparse(link)
-            if parsed_link.scheme in ["http", "https"]:
-                links.append((link, depth + 1))
-        return links
+        self.processor = ContentProcessor()
+        logger.info("Crawler inicializado")
 
     async def crawl_site(self, base_url: str):
-        logger.info(f"Iniciando crawling avançado em: {base_url}")
+        logger.info("Iniciando crawling em: %s", base_url)
         async with aiohttp.ClientSession(
-            connector=TCPConnector(limit=SETTINGS.MAX_CONNECTIONS),
-            timeout=ClientTimeout(total=SETTINGS.REQUEST_TIMEOUT)
+                connector=TCPConnector(limit=DEFAULT_CONFIG["MAX_CONNECTIONS"]),
+                timeout=ClientTimeout(total=DEFAULT_CONFIG["REQUEST_TIMEOUT"])
         ) as session:
             queue = [(base_url, 0)]
             visited = set()
             while queue:
                 url, depth = queue.pop(0)
-                if url in visited or depth > SETTINGS.MAX_DEPTH:
-                    continue
-                if not await self._can_fetch(url):
-                    logger.info(f"Respeitando robots.txt: {url}")
+                if url in visited or depth > DEFAULT_CONFIG["MAX_DEPTH"]:
                     continue
                 visited.add(url)
                 if await self._process_page(session, url):
                     new_links = await self._extract_links(session, url, depth)
                     queue.extend(new_links)
-                    await asyncio.sleep(SETTINGS.RATE_LIMIT)
+                    await asyncio.sleep(DEFAULT_CONFIG["RATE_LIMIT"])
 
-# --- Motor de Busca Híbrido ---
-class HybridSearchEngine:
+    async def _process_page(self, session, url: str) -> bool:
+        try:
+            content = await self._fetch_page(session, url)
+            if not content:
+                return False
+            page = self._create_page(url, content)
+            if page.safety_score > DEFAULT_CONFIG["SAFETY_THRESHOLD"]:
+                logger.debug("Conteúdo inseguro ignorado: %s", url)
+                return False
+            self._save_page(page)
+            logger.info("Página indexada: %s", url)
+            return True
+        except Exception as e:
+            logger.error("Erro no processamento de %s: %s", url, str(e))
+            return False
+
+    async def _fetch_page(self, session, url: str) -> Optional[str]:
+        try:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    return await response.text()
+                logger.warning("Status inválido %s em %s", response.status, url)
+                return None
+        except Exception as e:
+            logger.warning("Falha ao buscar %s: %s", url, str(e))
+            return None
+
+    def _create_page(self, url: str, content: str) -> Page:
+        soup = BeautifulSoup(content, 'html.parser')
+        text = self.processor.process_text(soup.get_text())
+        parsed = urlparse(url)
+        title_tag = soup.find("title")
+        title = title_tag.string.strip() if title_tag and title_tag.string else parsed.netloc
+        return Page(
+            url=url,
+            title=title,
+            content=text,
+            simplified_content=text[:500],
+            tokens=self.processor.tokenize(text),
+            safety_score=SecurityEngine.analyze_content(text),
+            last_crawled=datetime.now().isoformat(),
+            domain=parsed.netloc,
+            checksum=SecurityEngine.generate_checksum(text)
+        )
+
+    def _save_page(self, page: Page):
+        try:
+            conn = DatabaseManager.get_connection()
+            with conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO pages 
+                    (url, title, content, simplified_content, tokens, safety_score, last_crawled, domain, checksum)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    page.url,
+                    page.title,
+                    page.content,
+                    page.simplified_content,
+                    page.tokens,
+                    page.safety_score,
+                    page.last_crawled,
+                    page.domain,
+                    page.checksum
+                ))
+        except sqlite3.Error as e:
+            logger.error("Erro ao salvar página %s: %s", page.url, str(e))
+
+    async def _extract_links(self, session, url: str, depth: int) -> List[tuple]:
+        try:
+            async with session.get(url) as response:
+                content = await response.text()
+                soup = BeautifulSoup(content, 'html.parser')
+                return [
+                    (urljoin(url, link['href']), depth + 1)
+                    for link in soup.find_all('a', href=True)
+                    if self._is_valid(urljoin(url, link['href']))
+                ]
+        except Exception as e:
+            logger.warning("Erro ao extrair links de %s: %s", url, str(e))
+            return []
+
+    def _is_valid(self, url: str) -> bool:
+        parsed = urlparse(url)
+        return any(parsed.netloc.endswith(domain) for domain in DEFAULT_CONFIG["ALLOWED_DOMAINS"])
+
+
+# --- Motor de busca ---
+class SearchService:
     def __init__(self):
-        self.tfidf_vectorizer = TfidfVectorizer()
-        self.bm25 = None
-        self.corpus = []
+        self.vectorizer = TfidfVectorizer(ngram_range=(1, 2), min_df=1)
+        self.processor = ContentProcessor()
         self._initialize()
-        logger.info("Motor de busca híbrido pronto")
+        logger.info("Motor de busca pronto. Vocabulário: %d termos",
+                    len(self.vectorizer.get_feature_names_out()))
 
     def _initialize(self):
         try:
             conn = DatabaseManager.get_connection()
-            cur = conn.execute("SELECT tokens FROM pages")
+            cur = conn.execute("SELECT title FROM pages")
             docs = [row[0] for row in cur.fetchall()]
             if docs:
-                logger.info(f"Treinando modelos com {len(docs)} documentos")
-                tokenized_docs = [doc.split() for doc in docs]
-                self.bm25 = BM25Okapi(tokenized_docs)
-                self.tfidf_vectorizer.fit(docs)
-                self.corpus = docs
+                logger.info("Treinando modelo com %d títulos", len(docs))
+                self.vectorizer.fit(docs)
             else:
-                logger.warning("Nenhum documento para treinamento")
+                logger.warning("Nenhum título para treinamento")
         except sqlite3.Error as e:
-            logger.error(f"Falha na inicialização: {str(e)}")
-
-    def _process_query(self, query: str) -> str:
-        processor = AdvancedContentProcessor()
-        return processor.process_text(query)
-
-    def _create_result(self, row, score: float) -> SearchResult:
-        url, simplified_content, safety_score, last_crawled = row
-        title = url  # sem extração específica de título, usa-se a URL como título
-        snippet = simplified_content[:200] + "..." if len(simplified_content) > 200 else simplified_content
-        safety_rating = "seguro" if safety_score < SETTINGS.SAFETY_THRESHOLD else "não seguro"
-        return SearchResult(url=url, title=title, snippet=snippet, relevance=score, safety_rating=safety_rating, last_crawled=last_crawled)
+            logger.error("Falha na inicialização: %s", str(e))
 
     def search(self, query: str) -> List[SearchResult]:
-        cache_key = f"search:{query.lower()}"
-        if cache_key in search_cache:
-            logger.info(f"Cache hit para: '{query}'")
-            return search_cache[cache_key]
-
-        logger.info(f"Nova busca: '{query}'")
-        processed = self._process_query(query)
-        if not processed:
+        logger.info("Nova busca: '%s'", query)
+        self._initialize()
+        processed_query = self._process_query(query)
+        if not processed_query:
+            logger.warning("Consulta vazia")
             return []
-
+        query_tokens = set(processed_query.split())
         try:
-            bm25_scores = self.bm25.get_scores(processed.split()) if self.bm25 else []
-            tfidf_scores = self.tfidf_vectorizer.transform([processed])
-            results = []
-            conn = DatabaseManager.get_connection()
+            query_vec = self.vectorizer.transform([processed_query])
+        except ValueError:
+            logger.error("Consulta contém termos desconhecidos")
+            return []
+        results = []
+        conn = DatabaseManager.get_connection()
+        try:
             cur = conn.execute("""
-                SELECT url, simplified_content, safety_score, last_crawled 
+                SELECT url, title, safety_score 
                 FROM pages 
                 WHERE safety_score < ?
-            """, (SETTINGS.SAFETY_THRESHOLD,))
+            """, (DEFAULT_CONFIG["SAFETY_THRESHOLD"],))
             rows = cur.fetchall()
-            for idx, row in enumerate(rows):
-                try:
-                    doc_vec = self.tfidf_vectorizer.transform([row[1]])
-                    tfidf_score = (tfidf_scores * doc_vec.T).toarray()[0][0]
-                    bm25_score = bm25_scores[idx] if idx < len(bm25_scores) else 0
-                    combined_score = (SETTINGS.BM25_WEIGHT * bm25_score +
-                                      SETTINGS.TFIDF_WEIGHT * tfidf_score)
-                    if combined_score > 0.1:
-                        results.append(self._create_result(row, combined_score))
-                except Exception as e:
-                    logger.error(f"Erro no documento {row[0]}: {str(e)}")
-            logger.info(f"Busca retornou {len(results)} resultados")
-            sorted_results = sorted(results, key=lambda x: x.relevance, reverse=True)[:20]
-            search_cache[cache_key] = sorted_results
-            return sorted_results
-        except Exception as e:
-            logger.error(f"Erro na busca: {str(e)}")
+            if not rows:
+                return []
+            docs = [row[1] for row in rows]
+            doc_matrix = self.vectorizer.transform(docs)
+            similarities = (query_vec * doc_matrix.T).toarray().flatten()
+            for i, sim in enumerate(similarities):
+                title = rows[i][1]
+                processed_title = self.processor.tokenize(self.processor.process_text(title))
+                title_tokens = set(processed_title.split())
+                if not query_tokens.intersection(title_tokens):
+                    continue
+                results.append(SearchResult(
+                    url=rows[i][0],
+                    title=title,
+                    snippet=title,
+                    relevance=sim,
+                    safety_rating="🟢 Seguro" if rows[i][2] < 0.3 else "🔴 Não verificado"
+                ))
+            logger.info("Busca retornou %d resultados", len(results))
+            results.sort(key=lambda x: x.relevance, reverse=True)
+            return results[:20]
+        except sqlite3.Error as e:
+            logger.error("Erro no banco de dados: %s", str(e))
             return []
 
-# --- Data Initializer ---
+    def _process_query(self, query: str) -> str:
+        return self.processor.tokenize(self.processor.process_text(query))
+
+
+# --- Inicialização de dados e conteúdo interno ---
 class DataInitializer:
     @staticmethod
     async def initialize():
         conn = DatabaseManager.get_connection()
-        cur = conn.execute("SELECT COUNT(*) FROM pages")
-        count = cur.fetchone()[0]
-        if count == 0:
-            logger.info("Inicializando dados com seed URLs")
-            crawler = EnhancedCrawler()
-            async with aiohttp.ClientSession(
-                connector=TCPConnector(limit=SETTINGS.MAX_CONNECTIONS),
-                timeout=ClientTimeout(total=SETTINGS.REQUEST_TIMEOUT)
-            ) as session:
-                for url in SETTINGS.SEED_URLS:
-                    await crawler._process_page(session, url)
+        if conn.execute("SELECT COUNT(*) FROM pages").fetchone()[0] == 0:
+            logger.info("Inicializando banco de dados...")
+            await DataInitializer._seed_content()
+            DataInitializer._add_fallback_content()
 
-# --- API REST e Frontend Moderno ---
+    @staticmethod
+    async def _seed_content():
+        crawler = CrawlerService()
+        dynamic_seed_urls = []
+
+        for base in DEFAULT_BASE_URLS:
+            discovered = discover_seed_urls(base, ALLOWED_DOMAINS)
+            logger.info("Discovered {} URLs from base {}".format(len(discovered), base))
+            dynamic_seed_urls.extend(discovered)
+        # Remove duplicatas
+        dynamic_seed_urls = list(set(dynamic_seed_urls))
+        # Executa o crawling para cada URL descoberta em paralelo
+        await asyncio.gather(*(crawler.crawl_site(url) for url in dynamic_seed_urls))
+
+    @staticmethod
+    def _add_fallback_content():
+        content = {
+            "easblue://ajuda": (
+                "Central de Ajuda EasBlue:\n"
+                "1. Digite termos simples na busca\n"
+                "2. Verifique o selo de segurança\n"
+                "3. Utilize termos específicos\n"
+                "Exemplo: 'direitos do idoso'"
+            )
+        }
+        try:
+            conn = DatabaseManager.get_connection()
+            processor = ContentProcessor()
+            with conn:
+                for url, text in content.items():
+                    processed = processor.process_text(text)
+                    conn.execute("""
+                        INSERT OR IGNORE INTO pages 
+                        (url, title, content, simplified_content, tokens, safety_score, last_crawled, domain, checksum)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        url,
+                        "Ajuda EasBlue",
+                        processed,
+                        processed[:500],
+                        processor.tokenize(processed),
+                        0.0,
+                        datetime.now().isoformat(),
+                        "easblue.internal",
+                        SecurityEngine.generate_checksum(processed)
+                    ))
+            logger.info("Conteúdo interno adicionado")
+        except sqlite3.Error as e:
+            logger.error("Erro no conteúdo interno: %s", str(e))
+
+
+# --- Aplicação web com Flask ---
 app = Flask(__name__)
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per hour", "50 per minute"]
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-)
-
-@app.route("/api/search", methods=["GET"])
-@limiter.limit("10 per second")
-def api_search():
-    query = request.args.get("q", "").strip()
-    if not query:
-        return jsonify({"error": "Consulta vazia"}), 400
-    results = HybridSearchEngine().search(query)
-    return jsonify([
-        {
-            "url": r.url,
-            "title": r.title,
-            "snippet": r.snippet,
-            "relevance": r.relevance,
-            "safety": r.safety_rating,
-            "last_crawled": r.last_crawled
-        } for r in results
-    ])
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    results = []
+    query = ""
     if request.method == "POST":
-        query = request.form.get("q", "").strip()
-        results = HybridSearchEngine().search(query)
-        return render_template("index.html", results=results, query=query)
-    return render_template("index.html")
+        query = request.form.get("query", "").strip()
+        if query:
+            results = SearchService().search(query)
+            logger.info("Consulta '%s' retornou %d resultados", query, len(results))
+    return render_template("index.html",
+                           results=results,
+                           query=query,
+                           results_count=len(results))
 
-@app.route("/health")
-def health_check():
-    try:
-        conn = DatabaseManager.get_connection()
-        conn.execute("SELECT 1")
-        count = conn.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
-        return jsonify({
-            "status": "ok",
-            "database": "operacional",
-            "indexed_pages": count
-        })
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
 
-# --- Tarefas em Background ---
-async def background_operations():
-    logger.info("Iniciando operações em background")
+# --- Tarefas em background para atualização periódica ---
+async def background_tasks():
+    logger.info("Iniciando tarefas em background")
     await DataInitializer.initialize()
     while True:
         try:
-            crawler = EnhancedCrawler()
-            for url in SETTINGS.SEED_URLS:
-                await crawler.crawl_site(url)
+            crawler = CrawlerService()
+            dynamic_seed_urls = []
+            for base in DEFAULT_BASE_URLS:
+                discovered = discover_seed_urls(base, ALLOWED_DOMAINS)
+                dynamic_seed_urls.extend(discovered)
+            dynamic_seed_urls = list(set(dynamic_seed_urls))
+            await asyncio.gather(*(crawler.crawl_site(url) for url in dynamic_seed_urls))
             logger.info("Ciclo de atualização concluído")
-            await asyncio.sleep(SETTINGS.CRAWL_INTERVAL)
+            await asyncio.sleep(3600)  # Atualiza a cada hora
         except Exception as e:
-            logger.error(f"Erro nas operações em background: {str(e)}")
+            logger.error("Erro nas tarefas em background: %s", str(e))
             await asyncio.sleep(60)
 
-# --- Ponto de Entrada ---
-if __name__ == "__main__":
-    try:
-        import nltk
-        nltk.data.find('corpora/stopwords')
-    except LookupError:
-        import nltk
-        nltk.download('stopwords')
 
+if __name__ == "__main__":
     DatabaseManager.get_connection()
     threading.Thread(
-        target=lambda: asyncio.run(background_operations()),
+        target=lambda: asyncio.run(background_tasks()),
         daemon=True
     ).start()
     app.run(host="0.0.0.0", port=5000, use_reloader=False)
