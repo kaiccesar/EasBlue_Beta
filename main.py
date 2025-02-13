@@ -35,13 +35,14 @@ DEFAULT_BASE_URLS = [
     "https://www.folha.uol.com.br/",
     "https://www.bbc.com/portuguese",
     "https://oglobo.globo.com/",
-    "https://www.estadao.com.br/"
+    "https://blog.scielo.org/",
+    "https://revistagalileu.globo.com/"
 ]
 ALLOWED_DOMAINS = [
-    ".gov.br", ".un.org", "wikipedia.org",
+    ".gov.br", ".un.org", "blog.scielo.org",
     "folha.uol.com.br", "g1.globo.com",
     "infoescola.com", "brasilescola.uol.com.br",
-    "bbc.com", "oglobo.globo.com", "estadao.com.br"
+    "bbc.com", "oglobo.globo.com", "revistagalileu.globo.com"
 ]
 
 DEFAULT_CONFIG = {
@@ -49,7 +50,7 @@ DEFAULT_CONFIG = {
     "RATE_LIMIT": 1.5,
     "REQUEST_TIMEOUT": 10,
     "MAX_CONNECTIONS": 30,
-    "DB_PATH": "easblue.db",
+    "DB_PATH": "Easblue_Prototipo.db",
     "SAFETY_THRESHOLD": 0.3,
 
     "ALLOWED_DOMAINS": ALLOWED_DOMAINS
@@ -76,7 +77,7 @@ def discover_seed_urls(base_url: str, allowed_domains: list = None) -> list:
     return list(found_urls)
 
 
-# --- Modelos de dados ---
+# Modelos de dados
 @dataclass
 class Page:
     url: str
@@ -99,7 +100,7 @@ class SearchResult:
     safety_rating: str
 
 
-# --- Configuração de logging ---
+# Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -107,7 +108,7 @@ logging.basicConfig(
 logger = logging.getLogger("EasBlue")
 
 
-# --- Gerenciamento de banco de dados com migrações ---
+# Gerenciamento de banco de dados com migrações
 class DatabaseManager:
     _local = threading.local()
 
@@ -151,7 +152,7 @@ class DatabaseManager:
             conn.commit()
 
 
-# --- Processamento de conteúdo ---
+# Processamento de conteúdo
 class ContentProcessor:
     def __init__(self):
         self.stemmer = SnowballStemmer("portuguese")
@@ -196,7 +197,7 @@ class ContentProcessor:
         return ' '.join(processed_words)
 
 
-# --- Verificação de segurança e análise de conteúdo ---
+# Verificação de segurança e análise de conteúdo
 class SecurityEngine:
     @staticmethod
     def generate_checksum(content: str) -> str:
@@ -226,7 +227,7 @@ class SecurityEngine:
         return min(danger, 1.0)
 
 
-# --- Sistema de crawling ---
+# Sistema de crawling
 class CrawlerService:
     def __init__(self):
         self.processor = ContentProcessor()
@@ -336,7 +337,7 @@ class CrawlerService:
         return any(parsed.netloc.endswith(domain) for domain in DEFAULT_CONFIG["ALLOWED_DOMAINS"])
 
 
-# --- Motor de busca ---
+# Motor de busca
 class SearchService:
     def __init__(self):
         self.vectorizer = TfidfVectorizer(ngram_range=(1, 2), min_df=1)
@@ -409,7 +410,7 @@ class SearchService:
         return self.processor.tokenize(self.processor.process_text(query))
 
 
-# --- Inicialização de dados e conteúdo interno ---
+# Inicialização de dados e conteúdo interno
 class DataInitializer:
     @staticmethod
     async def initialize():
@@ -470,7 +471,7 @@ class DataInitializer:
             logger.error("Erro no conteúdo interno: %s", str(e))
 
 
-# --- Aplicação web com Flask ---
+# Aplicação web com Flask
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
@@ -490,7 +491,7 @@ def index():
                            results_count=len(results))
 
 
-# --- Tarefas em background para atualização periódica ---
+# Tarefas em background para atualização periódica
 async def background_tasks():
     logger.info("Iniciando tarefas em background")
     await DataInitializer.initialize()
