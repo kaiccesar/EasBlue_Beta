@@ -27,22 +27,23 @@ def adapt_datetime(dt):
 sqlite3.register_adapter(datetime, adapt_datetime)
 
 DEFAULT_BASE_URLS = [
-    "https://www.gov.br/pt-br/noticias",
+    "https://guiadoestudante.abril.com.br/",
     "https://www.infoescola.com/",
-    "https://brasil.un.org/pt-br/sdgs",
+    "https://www.techtudo.com.br/",
     "https://brasilescola.uol.com.br/",
-    "https://g1.globo.com/",
+    "https://www.deepl.com/pt-BR/translator",
     "https://www.folha.uol.com.br/",
-    "https://www.bbc.com/portuguese",
-    "https://oglobo.globo.com/",
-    "https://blog.scielo.org/",
-    "https://revistagalileu.globo.com/"
+    "https://www.cnnbrasil.com.br/",
+    "https://noticias.uol.com.br/",
+    "https://revistagalileu.globo.com/",
+    "https://www.gov.br/pt-br"
 ]
 ALLOWED_DOMAINS = [
-    ".gov.br", ".un.org", "blog.scielo.org",
+    ".gov.br", ".un.org",
     "folha.uol.com.br", "g1.globo.com",
     "infoescola.com", "brasilescola.uol.com.br",
-    "bbc.com", "oglobo.globo.com", "revistagalileu.globo.com"
+    "bbc.com", "oglobo.globo.com", "revistagalileu.globo.com", "noticias.uol.com",
+    "deepl.com", "techtudo.com "
 ]
 
 DEFAULT_CONFIG = {
@@ -52,10 +53,7 @@ DEFAULT_CONFIG = {
     "MAX_CONNECTIONS": 30,
     "DB_PATH": "Easblue_Prototipo.db",
     "SAFETY_THRESHOLD": 0.3,
-
-    "ALLOWED_DOMAINS": ALLOWED_DOMAINS
 }
-
 
 def discover_seed_urls(base_url: str, allowed_domains: list = None) -> list:
     try:
