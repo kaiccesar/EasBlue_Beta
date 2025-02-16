@@ -1,0 +1,10 @@
+aiohttp
+beautifulsoup4
+dnspython
+Flask
+nltk
+numpy
+pybloom-live
+requests
+scikit-learn
+selenium
