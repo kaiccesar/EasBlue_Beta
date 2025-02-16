@@ -13,7 +13,6 @@ from datetime import datetime
 from urllib.parse import urljoin, urlparse
 from collections import deque
 from itertools import chain
-from functools import lru_cache
 from bs4 import BeautifulSoup
 from flask import Flask, request, render_template, redirect, url_for, flash
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -67,24 +66,29 @@ sqlite3.register_adapter(datetime, adapt_datetime)
 # URLs e domínios permitidos
 DEFAULT_BASE_URLS = [
     "https://www.gov.br/pt-br/noticias",
-    "https://www.infoescola.com/",
-    "https://brasil.un.org/pt-br/sdgs",
-    "https://brasilescola.uol.com.br/",
-    "https://g1.globo.com/",
-    "https://www.folha.uol.com.br/",
-    "https://www.bbc.com/portuguese",
-    "https://oglobo.globo.com/",
-    "https://blog.scielo.org/",
-    "https://revistagalileu.globo.com/"
+    "https://www.gov.br/anatel/pt-br",  # Agência Nacional de Telecomunicações :cite[5]
+    "https://www.ibge.gov.br",  # Instituto Brasileiro de Geografia e Estatística
+    "https://portal.fiocruz.br",  # Fundação Oswaldo Cruz
+    "https://www12.senado.leg.br/noticias",  # Portal oficial do Senado
+    "https://www.camara.leg.br",  # Câmara dos Deputados
+    "https://agenciabrasil.ebc.com.br",  # Agência Brasil (Empresa Brasil de Comunicação)
+    "https://www.scielo.br",  # Biblioteca científica eletrônica
+    "https://www.cetic.br",  # Centro Regional de Estudos para o Desenvolvimento da Sociedade da Informação
+    "https://www.bcb.gov.br",  # Banco Central do Brasil
+    "https://www.ipea.gov.br",  # Instituto de Pesquisa Econômica Aplicada
+    "https://www.mctic.gov.br",  # Ministério da Ciência, Tecnologia e Inovações
+    "https://www.in.gov.br"  # Diário Oficial da União
 ]
 
 ALLOWED_DOMAINS = [
-    ".gov.br", ".un.org", "blog.scielo.org",
-    "folha.uol.com.br", "g1.globo.com",
-    "infoescola.com", "brasilescola.uol.com.br",
+    ".gov.br", ".ebc.com.br", "scielo.br", "cetic.br",
+    "ibge.gov.br", "fiocruz.br", "bcb.gov.br", "ipea.gov.br",
+    "mctic.gov.br", "senado.leg.br", "camara.leg.br", "in.gov.br",
+    # Mantendo os anteriores
+    ".un.org", "blog.scielo.org", "folha.uol.com.br",
+    "g1.globo.com", "infoescola.com", "brasilescola.uol.com.br",
     "bbc.com", "oglobo.globo.com", "revistagalileu.globo.com"
 ]
-
 
 # Modelos de dados
 @dataclass
@@ -451,9 +455,14 @@ def assess_trust(text: str) -> float:
 
 
 def fact_check_url(url: str) -> str:
-    trusted_domains = ["gov.br", "un.org", "bbc.com", "scielo.org", "revistagalileu.globo.com"]
+    trusted_domains = [
+        "gov.br", "ebc.com.br", "scielo.br", "cetic.br",
+        "ibge.gov.br", "fiocruz.br", "bcb.gov.br", "ipea.gov.br",
+        "mctic.gov.br", "senado.leg.br", "camara.leg.br", "in.gov.br",
+        "un.org", "scielo.org", "bbc.com"
+    ]
     domain = urlparse(url).netloc.lower()
-    return "Verificado" if any(td in domain for td in trusted_domains) else "Não verificado"
+    return "Verificado" if any(domain.endswith(td) for td in trusted_domains) else "Não verificado"
 
 
 # Motor de busca
