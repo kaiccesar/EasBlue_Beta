@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,14 +13,28 @@
             --accent-blue: #3b82f6;
             --text-primary: #1e293b;
             --text-secondary: #64748b;
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --border-color: #e2e8f0;
             --success: #22c55e;
             --warning: #f59e0b;
             --danger: #ef4444;
         }
 
+        [data-theme="dark"] {
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --bg-primary: #1e293b;
+            --bg-secondary: #0f172a;
+            --border-color: #334155;
+            --primary-gradient: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background: #f8fafc;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .logo-container {
@@ -78,27 +92,29 @@
         }
 
         .navbar {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(var(--bg-secondary), 0.95);
             backdrop-filter: blur(8px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .search-container {
             max-width: 800px;
             margin: 2rem auto;
             padding: 2rem;
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 20px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.03);
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border-color);
         }
 
         .search-input {
             border-radius: 14px;
             padding: 1.25rem 2rem;
-            border: 2px solid #e2e8f0;
+            border: 2px solid var(--border-color);
             font-size: 1.1rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
 
         .search-input:focus {
@@ -115,16 +131,12 @@
             transition: transform 0.2s ease;
         }
 
-        .search-btn:hover {
-            transform: translateY(-1px);
-        }
-
         .result-card {
-            background: white;
+            background: var(--bg-secondary);
             border-radius: 12px;
             padding: 1.5rem;
             margin: 1rem 0;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border-color);
             transition: all 0.2s ease;
         }
 
@@ -173,39 +185,18 @@
             padding: 6px 12px;
         }
 
-        .report-btn:hover {
-            transform: scale(1.05);
-            background: rgba(239, 68, 68, 0.2);
-        }
-
         .empty-state {
             text-align: center;
             padding: 4rem 2rem;
-            background: #f8fafc;
+            background: var(--bg-primary);
             border-radius: 16px;
-            border: 2px dashed #e2e8f0;
+            border: 2px dashed var(--border-color);
             margin-top: 2rem;
         }
 
-        .modal-header {
-            border-bottom: none;
-            padding: 1.5rem;
-            background: #f8fafc;
-        }
-
-        .settings-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .about-card {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 1rem 0;
+        .modal-content {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
 
         @media (max-width: 768px) {
@@ -223,9 +214,18 @@
                 padding: 1rem 1.5rem;
                 font-size: 1rem;
             }
+        }
 
-            .search-btn {
-                padding: 0 1.5rem;
+        /* Acessibilidade */
+        .keyboard-nav *:focus {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
             }
         }
     </style>
@@ -233,10 +233,10 @@
 <body>
     <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="logo-container" href="#">
+            <a class="logo-container" href="#" aria-label="Página inicial">
                 <div class="logo-mark">
                     <div class="logo-symbol">
-                        <svg class="lupa" viewBox="0 0 24 24">
+                        <svg class="lupa" viewBox="0 0 24 24" aria-hidden="true">
                             <circle cx="11" cy="11" r="8"/>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                         </svg>
@@ -245,7 +245,7 @@
                 <span class="logo-text">EasBlue</span>
             </a>
             <div class="d-flex gap-3">
-                <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal" aria-label="Configurações">
                     <i class="mdi mdi-cog"></i>
                 </button>
                 <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#aboutModal">
@@ -264,7 +264,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Configurações</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
                     <div class="settings-item">
@@ -273,38 +273,15 @@
                             <small class="text-secondary">Ative o tema escuro</small>
                         </div>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox">
+                            <input class="form-check-input" type="checkbox" id="themeSwitch" onclick="toggleTheme()">
                         </div>
                     </div>
-
-                    <div class="settings-item">
-                        <div>
-                            <h6>Pesquisa Segura</h6>
-                            <small class="text-secondary">Filtre conteúdo sensível</small>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" checked>
-                        </div>
-                    </div>
-
-                    <div class="settings-item">
-                        <div>
-                            <h6>Idioma</h6>
-                            <small class="text-secondary">Selecione o idioma</small>
-                        </div>
-                        <select class="form-select form-select-sm" style="width: 120px;">
-                            <option>Português</option>
-                            <option>English</option>
-                            <option>Español</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary">Salvar</button>
                 </div>
             </div>
         </div>
     </div>
+
+
 
     <!-- Modal Sobre -->
     <div class="modal fade" id="aboutModal" tabindex="-1">
@@ -484,7 +461,26 @@
             {% endif %}
         </div>
     </main>
+ <!-- Restante do código mantido igual... -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Tema Escuro
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.documentElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.getElementById('themeSwitch').checked = newTheme === 'dark';
+        }
+
+        // Carregar tema salvo
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        document.getElementById('themeSwitch').checked = savedTheme === 'dark';
+    </script>
 </body>
 </html>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

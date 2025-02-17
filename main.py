@@ -66,29 +66,74 @@ sqlite3.register_adapter(datetime, adapt_datetime)
 # URLs e domínios permitidos
 DEFAULT_BASE_URLS = [
     "https://www.gov.br/pt-br/noticias",
-    "https://www.gov.br/anatel/pt-br",  # Agência Nacional de Telecomunicações :cite[5]
-    "https://www.ibge.gov.br",  # Instituto Brasileiro de Geografia e Estatística
-    "https://portal.fiocruz.br",  # Fundação Oswaldo Cruz
-    "https://www12.senado.leg.br/noticias",  # Portal oficial do Senado
-    "https://www.camara.leg.br",  # Câmara dos Deputados
-    "https://agenciabrasil.ebc.com.br",  # Agência Brasil (Empresa Brasil de Comunicação)
-    "https://www.scielo.br",  # Biblioteca científica eletrônica
-    "https://www.cetic.br",  # Centro Regional de Estudos para o Desenvolvimento da Sociedade da Informação
-    "https://www.bcb.gov.br",  # Banco Central do Brasil
-    "https://www.ipea.gov.br",  # Instituto de Pesquisa Econômica Aplicada
-    "https://www.mctic.gov.br",  # Ministério da Ciência, Tecnologia e Inovações
-    "https://www.in.gov.br"  # Diário Oficial da União
+    "https://www.gov.br/anatel/pt-br",
+    "https://www.ibge.gov.br",
+    "https://portal.fiocruz.br",
+    "https://www12.senado.leg.br/noticias",
+    "https://www.camara.leg.br",
+    "https://agenciabrasil.ebc.com.br",
+    "https://www.cetic.br",
+    "https://www.bcb.gov.br",
+    "https://www.ipea.gov.br",
+    "https://www.mctic.gov.br",
+    "https://www.in.gov.br",
+    "https://www.descomplica.com.br",
+    "https://www.stoodi.com.br",
+    "https://www.passeidireto.com",
+    "https://www.beduka.com",
+    "https://www.infoenem.com.br",
+    "https://www.coursera.org",
+    "https://www.edx.org",
+    "https://www.udemy.com",
+    "https://www.codecademy.com",
+    "https://pt.khanacademy.org",
+    "https://www.brasilescola.com.br",
+    "https://www.respondeai.com.br",
+    "https://www.mesalva.com.br",
+    "https://www.inpe.br",
+    "https://www.embrapa.br",
+    "https://www.ita.br",
+    "https://www.fapesp.br",
+    "https://www.nature.com",
+    "https://www.science.org",
+    "https://techcrunch.com",
+    "https://www.wired.com",
+    "https://canaltech.com.br",
+    "https://www.tecmundo.com.br",
+    "https://olhardigital.com.br"
+
 ]
 
 ALLOWED_DOMAINS = [
+
     ".gov.br", ".ebc.com.br", "scielo.br", "cetic.br",
     "ibge.gov.br", "fiocruz.br", "bcb.gov.br", "ipea.gov.br",
     "mctic.gov.br", "senado.leg.br", "camara.leg.br", "in.gov.br",
-    # Mantendo os anteriores
-    ".un.org", "blog.scielo.org", "folha.uol.com.br",
-    "g1.globo.com", "infoescola.com", "brasilescola.uol.com.br",
-    "bbc.com", "oglobo.globo.com", "revistagalileu.globo.com"
+    "inpe.br", "embrapa.br", "ita.br", "cnpq.br", "fapesp.br",
+    ".un.org", "nature.com", "science.org", "mit.edu",
+    "techcrunch.com", "wired.com", "canaltech.com.br",
+    "tecmundo.com.br", "olhardigital.com.br",
+    "descomplica.com.br",
+    "stoodi.com.br",
+    "passeidireto.com",
+    "beduka.com",
+    "infoenem.com.br",
+    "vestibular.com.br",
+    "coursera.org",
+    "edx.org",
+    "udemy.com",
+    "duolingo.com",
+    "codecademy.com",
+    "khanacademy.org",
+    "brasilescola.com.br",
+    "respondeai.com.br",
+    "mesalva.com.br",
+    "querobolsa.com.br"
+    "blog.scielo.org", "folha.uol.com.br", "g1.globo.com",
+    "infoescola.com", "brasilescola.uol.com.br", "bbc.com",
+    "oglobo.globo.com", "revistagalileu.globo.com"
 ]
+
 
 # Modelos de dados
 @dataclass
@@ -703,4 +748,4 @@ if __name__ == "__main__":
         target=lambda: asyncio.run(background_tasks()),
         daemon=True
     ).start()
-    app.run(host="0.0.0.0", port=5000, use_reloader=False)
+    app.run(host='0.0.0.0', port=5000, debug=False, ssl_context='adhoc')
