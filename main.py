@@ -14,7 +14,7 @@ from urllib.parse import urljoin, urlparse
 from collections import deque
 from itertools import chain
 from bs4 import BeautifulSoup
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
@@ -25,20 +25,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import dns.resolver
 
-# Cria um resolvedor personalizado
-resolver = dns.resolver.Resolver(configure=False)
-resolver.nameservers = ['8.8.8.8']  # Define servidores DNS
-
-try:
-    resposta = resolver.resolve('google.com', 'A')
-    for registro in resposta:
-        print(registro)
-except dns.resolver.NXDOMAIN:
-    print("Domínio não encontrado")
-except dns.resolver.NoAnswer:
-    print("Sem resposta para a consulta")
-
-# Configurações dinâmicas
 DEFAULT_CONFIG = {
     "MAX_DEPTH": int(os.getenv("MAX_DEPTH", "2")),
     "RATE_LIMIT": float(os.getenv("RATE_LIMIT", "1.5")),
@@ -53,17 +39,8 @@ DEFAULT_CONFIG = {
 USE_JS_RENDERING = os.getenv("USE_JS_RENDERING", "False").lower() == "true"
 USE_ADVANCED_NLP = os.getenv("USE_ADVANCED_NLP", "False").lower() == "true"
 
+sqlite3.register_adapter(datetime, lambda dt: dt.isoformat())
 
-
-
-# Adaptador para datetime
-def adapt_datetime(dt):
-    return dt.isoformat()
-
-
-sqlite3.register_adapter(datetime, adapt_datetime)
-
-# URLs e domínios permitidos
 DEFAULT_BASE_URLS = [
     "https://www.gov.br/pt-br/noticias",
     "https://www.gov.br/anatel/pt-br",
@@ -101,11 +78,9 @@ DEFAULT_BASE_URLS = [
     "https://canaltech.com.br",
     "https://www.tecmundo.com.br",
     "https://olhardigital.com.br"
-
 ]
 
 ALLOWED_DOMAINS = [
-
     ".gov.br", ".ebc.com.br", "scielo.br", "cetic.br",
     "ibge.gov.br", "fiocruz.br", "bcb.gov.br", "ipea.gov.br",
     "mctic.gov.br", "senado.leg.br", "camara.leg.br", "in.gov.br",
@@ -128,14 +103,13 @@ ALLOWED_DOMAINS = [
     "brasilescola.com.br",
     "respondeai.com.br",
     "mesalva.com.br",
-    "querobolsa.com.br"
+    "querobolsa.com.br",
     "blog.scielo.org", "folha.uol.com.br", "g1.globo.com",
     "infoescola.com", "brasilescola.uol.com.br", "bbc.com",
     "oglobo.globo.com", "revistagalileu.globo.com"
 ]
 
 
-# Modelos de dados
 @dataclass
 class Page:
     url: str
@@ -163,7 +137,6 @@ class SearchResult:
     fact_check_rating: str
 
 
-# Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -171,7 +144,6 @@ logging.basicConfig(
 logger = logging.getLogger("EasBlue")
 
 
-# Gerenciamento de banco de dados
 class DatabaseManager:
     _local = threading.local()
 
@@ -209,7 +181,12 @@ class DatabaseManager:
             """CREATE TABLE IF NOT EXISTS schema_version (
                 version INTEGER PRIMARY KEY
             )""",
-            "INSERT OR IGNORE INTO schema_version (version) VALUES (4)"
+            "INSERT OR IGNORE INTO schema_version (version) VALUES (4)",
+            """CREATE TABLE IF NOT EXISTS autocomplete_terms (
+                term TEXT PRIMARY KEY,
+                count INTEGER DEFAULT 1
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_autocomplete_term ON autocomplete_terms(term)"
         ]
 
         additional_migrations = [
@@ -237,7 +214,6 @@ class DatabaseManager:
             conn.commit()
 
 
-# Processamento de conteúdo
 class ContentProcessor:
     REGEX_PATTERNS = {
         'hyphen': re.compile(r'-'),
@@ -284,7 +260,6 @@ class ContentProcessor:
         return ' '.join(processed_words)
 
 
-# Verificação de segurança
 class SecurityEngine:
     RISK_PATTERNS = [
         (r"\b(vacina .* mata|cloroquina cura)\b", 0.8),
@@ -305,7 +280,6 @@ class SecurityEngine:
         return hashlib.sha256(content.encode()).hexdigest()
 
 
-# Sistema de crawling
 class CrawlerService:
     def __init__(self):
         self.processor = ContentProcessor()
@@ -455,8 +429,22 @@ class CrawlerService:
                     page.checksum,
                     page.reported
                 ))
+
+                title_terms = self._extract_autocomplete_terms(page.title)
+                for term in title_terms:
+                    conn.execute("""
+                        INSERT INTO autocomplete_terms (term, count)
+                        VALUES (?, 1)
+                        ON CONFLICT(term) DO UPDATE SET count = count + 1
+                    """, (term,))
         except sqlite3.Error as e:
             logger.error("Erro ao salvar página %s: %s", page.url, str(e))
+
+    def _extract_autocomplete_terms(self, text: str) -> List[str]:
+        text = unicodedata.normalize('NFKD', text).lower()
+        text = re.sub(r'[^\w\s]', '', text)
+        words = re.findall(r'\b\w{3,}\b', text)
+        return [word for word in words if word not in self.processor.stop_words]
 
     async def _extract_links(self, session, url: str, depth: int) -> List[tuple]:
         try:
@@ -480,7 +468,6 @@ class CrawlerService:
         return scheme in ['http', 'https']
 
 
-# Funções auxiliares
 def is_valid_dns(url: str) -> bool:
     domain = urlparse(url).netloc
     try:
@@ -510,7 +497,6 @@ def fact_check_url(url: str) -> str:
     return "Verificado" if any(domain.endswith(td) for td in trusted_domains) else "Não verificado"
 
 
-# Motor de busca
 class SearchService:
     def __init__(self):
         self.vectorizer = TfidfVectorizer(ngram_range=(1, 2), min_df=1, max_df=0.85)
@@ -595,7 +581,6 @@ class SearchService:
         return self.processor.tokenize(self.processor.process_text(query))
 
 
-# Aplicação Flask
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.secret_key = os.getenv("SECRET_KEY", "super_secret_key_123")
@@ -630,7 +615,32 @@ def report():
     return redirect(url_for("index"))
 
 
-# Inicialização de dados
+@app.route('/autocomplete')
+def autocomplete():
+    def normalize_term(term):
+        return unicodedata.normalize('NFKD', term).encode('ascii', 'ignore').decode('ascii').lower()
+
+    raw_term = request.args.get('term', '')
+    term = normalize_term(raw_term)
+
+    if not term:
+        return jsonify([])
+
+    try:
+        conn = DatabaseManager.get_connection()
+        cur = conn.execute("""
+            SELECT term FROM autocomplete_terms
+            WHERE term LIKE ? || '%'
+            ORDER BY count DESC
+            LIMIT 10
+        """, (term,))
+        suggestions = [row[0] for row in cur.fetchall()]
+        return jsonify(suggestions)
+    except sqlite3.Error as e:
+        logger.error("Erro na busca de autocompletar: %s", str(e))
+        return jsonify([])
+
+
 class DataInitializer:
     @staticmethod
     async def initialize():
@@ -700,7 +710,6 @@ class DataInitializer:
             logger.error("Erro no conteúdo interno: %s", str(e))
 
 
-# Tarefas em background
 async def background_tasks():
     logger.info("Iniciando tarefas em background")
     await DataInitializer.initialize()
