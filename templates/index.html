@@ -336,6 +336,7 @@
                     <div class="settings-item mb-4">
                         <div>
                             <h6>Modo Escuro</h6>
+                            <small class="text-secondary">Melhor contraste para baixa visão</small>
                         </div>
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="themeSwitch">
@@ -380,10 +381,20 @@
                             <option value="dyslexia">OpenDyslexic</option>
                         </select>
                     </div>
+
+                    <div class="settings-item">
+                        <div>
+                            <h6>Teclas de Atalho</h6>
+                            <small class="text-secondary">Ativar navegação por teclado</small>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="keyboardNav">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
     <div class="modal fade" id="aboutModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -631,6 +642,13 @@
             document.getElementById('keyboardNav').checked = settings.keyboardNav;
         }
 
+        document.getElementById('themeSwitch').addEventListener('change', function(e) {
+            const newTheme = e.target.checked ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.documentElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
         document.getElementById('fontSize').addEventListener('input', function(e) {
             document.documentElement.style.fontSize = e.target.value + 'rem';
             localStorage.setItem('fontSize', e.target.value);
@@ -687,16 +705,6 @@
                 }
             });
         });
-
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-            document.documentElement.setAttribute('data-theme', newTheme);
-            document.documentElement.setAttribute('data-bs-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            document.getElementById('themeSwitch').checked = newTheme === 'dark';
-        }
 
         const searchInput = document.getElementById('searchInput');
         const autocompleteItems = document.getElementById('autocompleteItems');
