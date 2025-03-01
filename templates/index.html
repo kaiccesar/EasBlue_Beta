@@ -54,6 +54,10 @@
             animation: none !important;
         }
 
+        [data-simplified="true"] .visual-complex {
+            display: none !important;
+        }
+
         body {
             font-family: var(--font-family);
             background: var(--bg-primary);
@@ -169,11 +173,36 @@
             margin: 1rem 0;
             border: 1px solid var(--border-color);
             transition: all 0.2s ease;
+            width: 100%;
+            overflow: hidden;
         }
 
-        .result-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        .result-card .d-flex {
+            min-width: 0;
+            gap: 1rem;
+        }
+
+        .result-card h5 a {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+        }
+
+        .result-card p {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+        }
+
+        .result-card .d-flex.align-items-center.justify-content-between {
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
         .badge-icon {
@@ -206,6 +235,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            max-width: 100%;
         }
 
         .report-btn {
@@ -266,6 +296,35 @@
             font-weight: 600;
         }
 
+        .vlibras-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .tts-button {
+            background: rgba(59, 130, 246, 0.1);
+            border: none;
+            border-radius: 8px;
+            padding: 4px 8px;
+        }
+
+        .color-picker {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .speech-status {
+            position: absolute;
+            right: 130px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
         @media (max-width: 768px) {
             .logo-text {
                 display: none;
@@ -280,6 +339,18 @@
             .search-input {
                 padding: 1rem 1.5rem;
                 font-size: 1rem;
+            }
+
+            .result-card {
+                padding: 1rem;
+            }
+
+            .result-card h5 a {
+                -webkit-line-clamp: 3;
+            }
+
+            .result-card p {
+                -webkit-line-clamp: 2;
             }
         }
 
@@ -298,6 +369,10 @@
     </style>
 </head>
 <body>
+    <div vw class="enabled vlibras-btn">
+        <div vw-access-button class="btn btn-primary"></div>
+    </div>
+
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="logo-container" href="#" aria-label="Página inicial">
@@ -540,6 +615,10 @@
                            autocomplete="off"
                            id="searchInput"
                            autofocus>
+                    <div class="speech-status" id="speechStatus"></div>
+                    <button type="button" class="btn btn-secondary" id="voiceBtn">
+                        <i class="mdi mdi-microphone"></i>
+                    </button>
                     <div class="autocomplete-items" id="autocompleteItems"></div>
                     <button type="submit" class="btn btn-primary search-btn">
                         <i class="mdi mdi-magnify"></i> Pesquisar
@@ -554,34 +633,41 @@
 
                 {% for result in results %}
                     <div class="result-card">
-                        <div class="d-flex flex-column gap-2">
-                            <div class="url-text">
-                                {{ result.url }}
-                            </div>
-                            <h5 class="mb-1">
-                                <a href="{{ result.url }}" class="text-decoration-none text-dark fw-semibold" target="_blank">
-                                    {{ result.title }}
-                                </a>
-                            </h5>
-                            <p class="mb-2 text-secondary">{{ result.snippet }}</p>
-
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="d-flex gap-2">
-                                    <span class="badge-icon safety-{{ 'safe' if result.safety_rating == '🟢 Seguro' else 'warning' }}">
-                                        <i class="mdi mdi-{{ 'shield-check' if result.safety_rating == '🟢 Seguro' else 'alert-circle' }}"></i>
-                                        {{ result.safety_rating.split(' ')[1] }}
-                                    </span>
-                                    <span class="badge-icon trust-high">
-                                        <i class="mdi mdi-{{ 'check-decagram' if result.trust_rating == '✅ Confiável' else 'alert' }}"></i>
-                                        {{ result.trust_rating.split(' ')[1] }}
-                                    </span>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex flex-column gap-2">
+                                <div class="url-text">
+                                    {{ result.url }}
                                 </div>
-                                <form method="POST" action="{{ url_for('report') }}">
-                                    <input type="hidden" name="url" value="{{ result.url }}">
-                                    <button type="submit" class="btn btn-sm report-btn">
-                                        <i class="mdi mdi-flag-outline"></i> Reportar
-                                    </button>
-                                </form>
+                                <h5 class="mb-1">
+                                    <a href="{{ result.url }}" class="text-decoration-none text-dark fw-semibold" target="_blank">
+                                        {{ result.title }}
+                                    </a>
+                                </h5>
+                                <p class="mb-2 text-secondary">{{ result.snippet }}</p>
+
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex gap-2">
+                                        <span class="badge-icon safety-{{ 'safe' if result.safety_rating == '🟢 Seguro' else 'warning' }}">
+                                            <i class="mdi mdi-{{ 'shield-check' if result.safety_rating == '🟢 Seguro' else 'alert-circle' }}"></i>
+                                            {{ result.safety_rating.split(' ')[1] }}
+                                        </span>
+                                        <span class="badge-icon trust-high">
+                                            <i class="mdi mdi-{{ 'check-decagram' if result.trust_rating == '✅ Confiável' else 'alert' }}"></i>
+                                            {{ result.trust_rating.split(' ')[1] }}
+                                        </span>
+                                    </div>
+                                    <form method="POST" action="{{ url_for('report') }}">
+                                        <input type="hidden" name="url" value="{{ result.url }}">
+                                        <button type="submit" class="btn btn-sm report-btn">
+                                            <i class="mdi mdi-flag-outline"></i> Reportar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="tts-button" data-text="{{ result.snippet }}">
+                                    <i class="mdi mdi-volume-high"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -603,43 +689,97 @@
                 </div>
             {% endif %}
         </div>
+
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
     <script>
-        function initAccessibility() {
-            const settings = {
-                theme: localStorage.getItem('theme') || 'light',
-                fontSize: localStorage.getItem('fontSize') || '1',
-                highContrast: localStorage.getItem('highContrast') === 'true',
-                reduceMotion: localStorage.getItem('reduceMotion') === 'true',
-                dyslexiaFont: localStorage.getItem('dyslexiaFont') || 'default',
-                keyboardNav: localStorage.getItem('keyboardNav') === 'true'
-            };
+        class VoiceController {
+            constructor() {
+                this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                this.recognition.lang = 'pt-BR';
+                this.recognition.interimResults = false;
 
-            document.documentElement.setAttribute('data-theme', settings.theme);
-            document.documentElement.setAttribute('data-bs-theme', settings.theme);
-            document.documentElement.style.fontSize = settings.fontSize + 'rem';
+                this.recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('searchInput').value = transcript;
+                    document.getElementById('speechStatus').innerHTML = '';
+                };
 
-            if(settings.highContrast) {
+                this.recognition.onerror = (event) => {
+                    document.getElementById('speechStatus').innerHTML =
+                        '<i class="mdi mdi-microphone-off text-danger"></i> Erro';
+                    console.error('Erro no reconhecimento de voz:', event.error);
+                };
+            }
+
+            start() {
+                this.recognition.start();
+                document.getElementById('speechStatus').innerHTML =
+                    '<i class="mdi mdi-microphone text-success"></i> Ouvindo...';
+            }
+        }
+
+        const voiceController = new VoiceController();
+
+        document.getElementById('voiceBtn').addEventListener('click', () => {
+            voiceController.start();
+        });
+
+        document.querySelectorAll('.tts-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const synth = window.speechSynthesis;
+                const utterance = new SpeechSynthesisUtterance(button.dataset.text);
+                utterance.lang = 'pt-BR';
+                synth.speak(utterance);
+            });
+        });
+
+        new window.VLibras.Widget('https://vlibras.gov.br/app');
+
+        // Configurações de acessibilidade
+        const applySavedSettings = () => {
+            // Tema
+            const savedTheme = localStorage.getItem('theme');
+            if(savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                document.documentElement.setAttribute('data-bs-theme', savedTheme);
+                document.getElementById('themeSwitch').checked = savedTheme === 'dark';
+            }
+
+            // Tamanho da fonte
+            const savedFontSize = localStorage.getItem('fontSize');
+            if(savedFontSize) {
+                document.documentElement.style.fontSize = savedFontSize + 'rem';
+                document.getElementById('fontSize').value = savedFontSize;
+            }
+
+            // Alto contraste
+            const highContrast = localStorage.getItem('highContrast') === 'true';
+            if(highContrast) {
                 document.documentElement.setAttribute('data-accessibility', 'high-contrast');
-            }
-            if(settings.reduceMotion) {
-                document.documentElement.setAttribute('data-accessibility', 'reduced-motion');
-            }
-            if(settings.dyslexiaFont === 'dyslexia') {
-                document.documentElement.setAttribute('data-accessibility', 'dyslexia');
-            }
-            if(settings.keyboardNav) {
-                document.body.classList.add('keyboard-nav');
+                document.getElementById('highContrast').checked = true;
             }
 
-            document.getElementById('themeSwitch').checked = settings.theme === 'dark';
-            document.getElementById('fontSize').value = settings.fontSize;
-            document.getElementById('highContrast').checked = settings.highContrast;
-            document.getElementById('reduceMotion').checked = settings.reduceMotion;
-            document.getElementById('dyslexiaFont').value = settings.dyslexiaFont;
-            document.getElementById('keyboardNav').checked = settings.keyboardNav;
+            // Redução de movimento
+            const reduceMotion = localStorage.getItem('reduceMotion') === 'true';
+            if(reduceMotion) {
+                document.documentElement.setAttribute('data-accessibility', 'reduced-motion');
+                document.getElementById('reduceMotion').checked = true;
+            }
+
+            // Fonte para dislexia
+            const dyslexiaFont = localStorage.getItem('dyslexiaFont');
+            if(dyslexiaFont === 'dyslexia') {
+                document.documentElement.setAttribute('data-accessibility', 'dyslexia');
+                document.getElementById('dyslexiaFont').value = 'dyslexia';
+            }
+
+            // Navegação por teclado
+            const keyboardNav = localStorage.getItem('keyboardNav') === 'true';
+            document.body.classList.toggle('keyboard-nav', keyboardNav);
+            document.getElementById('keyboardNav').checked = keyboardNav;
         }
 
         document.getElementById('themeSwitch').addEventListener('change', function(e) {
@@ -687,85 +827,8 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            initAccessibility();
-
-            document.addEventListener('keydown', (e) => {
-                if(document.body.classList.contains('keyboard-nav')) {
-                    const focusable = [...document.querySelectorAll(
-                        'a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])'
-                    )];
-
-                    if(e.key === 'Tab') {
-                        e.preventDefault();
-                        const current = document.activeElement;
-                        const index = focusable.indexOf(current);
-                        const next = focusable[index + 1] || focusable[0];
-                        next.focus();
-                    }
-                }
-            });
-        });
-
-        const searchInput = document.getElementById('searchInput');
-        const autocompleteItems = document.getElementById('autocompleteItems');
-
-        function normalizeTerm(term) {
-            return term.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        }
-
-        function debounce(func, timeout = 300) {
-            let timer;
-            return (...args) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => { func.apply(this, args); }, timeout);
-            };
-        }
-
-        function updateAutocomplete() {
-            const term = searchInput.value;
-            if (term.length < 2) {
-                autocompleteItems.style.display = 'none';
-                return;
-            }
-
-            fetch(`/autocomplete?term=${encodeURIComponent(term)}`)
-                .then(response => response.json())
-                .then(suggestions => {
-                    autocompleteItems.innerHTML = '';
-                    if (suggestions.length > 0) {
-                        autocompleteItems.style.display = 'block';
-                        suggestions.forEach(suggestion => {
-                            const div = document.createElement('div');
-                            div.className = 'autocomplete-item';
-                            div.innerHTML = suggestion.replace(
-                                new RegExp(term, 'gi'),
-                                match => `<span class="autocomplete-highlight">${match}</span>`
-                            );
-                            div.addEventListener('click', () => {
-                                searchInput.value = suggestion;
-                                autocompleteItems.style.display = 'none';
-                                searchInput.form.submit();
-                            });
-                            autocompleteItems.appendChild(div);
-                        });
-                    } else {
-                        autocompleteItems.style.display = 'none';
-                    }
-                });
-        }
-
-        searchInput.addEventListener('input', debounce(updateAutocomplete));
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.autocomplete-container')) {
-                autocompleteItems.style.display = 'none';
-            }
-        });
-
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                autocompleteItems.style.display = 'none';
-            }
+            applySavedSettings();
+            new window.VLibras.Widget('https://vlibras.gov.br/app');
         });
     </script>
 </body>
