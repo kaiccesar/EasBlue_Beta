@@ -213,6 +213,10 @@ class DatabaseManager:
 
             conn.commit()
 
+    @classmethod
+    def setup_frontend_tables(cls):
+        pass
+
 
 class ContentProcessor:
     REGEX_PATTERNS = {
@@ -753,8 +757,10 @@ async def discover_seed_urls_async(session, base_url: str):
 
 if __name__ == "__main__":
     DatabaseManager.get_connection()
+    DatabaseManager.setup_frontend_tables()
     threading.Thread(
         target=lambda: asyncio.run(background_tasks()),
         daemon=True
     ).start()
-    app.run(host='0.0.0.0', port=5000, debug=False, ssl_context='adhoc')
+    
+    app.run(host='127.0.0.1', port=80, debug=False)
