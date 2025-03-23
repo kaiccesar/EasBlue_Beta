@@ -19,12 +19,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from pybloom_live import BloomFilter
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-import dns.resolver
 
+# Configurações padrões atualizadas para selecionar sites mais confiáveis e factuais
 DEFAULT_CONFIG = {
     "MAX_DEPTH": int(os.getenv("MAX_DEPTH", "2")),
     "RATE_LIMIT": float(os.getenv("RATE_LIMIT", "1.5")),
@@ -41,72 +42,26 @@ USE_ADVANCED_NLP = os.getenv("USE_ADVANCED_NLP", "False").lower() == "true"
 
 sqlite3.register_adapter(datetime, lambda dt: dt.isoformat())
 
+# Sites base com foco em fontes institucionais, governamentais e factuais
 DEFAULT_BASE_URLS = [
     "https://www.gov.br/pt-br/noticias",
-    "https://www.gov.br/anatel/pt-br",
     "https://www.ibge.gov.br",
     "https://portal.fiocruz.br",
-    "https://www12.senado.leg.br/noticias",
-    "https://www.camara.leg.br",
-    "https://agenciabrasil.ebc.com.br",
-    "https://www.cetic.br",
-    "https://www.bcb.gov.br",
-    "https://www.ipea.gov.br",
-    "https://www.mctic.gov.br",
     "https://www.in.gov.br",
-    "https://www.descomplica.com.br",
-    "https://www.stoodi.com.br",
-    "https://www.passeidireto.com",
-    "https://www.beduka.com",
-    "https://www.infoenem.com.br",
-    "https://www.coursera.org",
-    "https://www.edx.org",
-    "https://www.udemy.com",
-    "https://www.codecademy.com",
-    "https://pt.khanacademy.org",
-    "https://www.brasilescola.com.br",
-    "https://www.respondeai.com.br",
-    "https://www.mesalva.com.br",
-    "https://www.inpe.br",
-    "https://www.embrapa.br",
-    "https://www.ita.br",
-    "https://www.fapesp.br",
+    "https://www.ipea.gov.br",
+    "https://www.bcb.gov.br",
+    "https://www.un.org/en",
+    "https://www.who.int",
+    "https://www.cdc.gov",
+    "https://www.scielo.br",
     "https://www.nature.com",
-    "https://www.science.org",
-    "https://techcrunch.com",
-    "https://www.wired.com",
-    "https://canaltech.com.br",
-    "https://www.tecmundo.com.br",
-    "https://olhardigital.com.br"
+    "https://www.science.org"
 ]
 
+# Domínios permitidos, focando em fontes seguras e institucionais
 ALLOWED_DOMAINS = [
-    ".gov.br", ".ebc.com.br", "scielo.br", "cetic.br",
-    "ibge.gov.br", "fiocruz.br", "bcb.gov.br", "ipea.gov.br",
-    "mctic.gov.br", "senado.leg.br", "camara.leg.br", "in.gov.br",
-    "inpe.br", "embrapa.br", "ita.br", "cnpq.br", "fapesp.br",
-    ".un.org", "nature.com", "science.org", "mit.edu",
-    "techcrunch.com", "wired.com", "canaltech.com.br",
-    "tecmundo.com.br", "olhardigital.com.br",
-    "descomplica.com.br",
-    "stoodi.com.br",
-    "passeidireto.com",
-    "beduka.com",
-    "infoenem.com.br",
-    "vestibular.com.br",
-    "coursera.org",
-    "edx.org",
-    "udemy.com",
-    "duolingo.com",
-    "codecademy.com",
-    "khanacademy.org",
-    "brasilescola.com.br",
-    "respondeai.com.br",
-    "mesalva.com.br",
-    "querobolsa.com.br",
-    "blog.scielo.org", "folha.uol.com.br", "g1.globo.com",
-    "infoescola.com", "brasilescola.uol.com.br", "bbc.com",
-    "oglobo.globo.com", "revistagalileu.globo.com"
+    "gov.br", "ibge.gov.br", "fiocruz.br", "in.gov.br", "ipea.gov.br", "bcb.gov.br",
+    "un.org", "who.int", "cdc.gov", "scielo.br", "nature.com", "science.org"
 ]
 
 
@@ -199,23 +154,18 @@ class DatabaseManager:
             for migration in migrations:
                 try:
                     conn.execute(migration)
-                except sqlite3.Error as e:
-                    logger.error("Erro na migração: %s", str(e))
+                except sqlite3.Error as err:
+                    logger.error(f"Erro na migração: {err}")
 
             for migration in additional_migrations:
                 try:
                     conn.execute(migration)
-                except sqlite3.OperationalError as e:
-                    if "duplicate column name" not in str(e):
-                        logger.error("Erro na migração adicional: %s", str(e))
-                except sqlite3.Error as e:
-                    logger.error("Erro na migração adicional: %s", str(e))
-
+                except sqlite3.OperationalError as err:
+                    if "duplicate column name" not in str(err):
+                        logger.error(f"Erro na migração adicional: {err}")
+                except sqlite3.Error as err:
+                    logger.error(f"Erro na migração adicional: {err}")
             conn.commit()
-
-    @classmethod
-    def setup_frontend_tables(cls):
-        pass
 
 
 class ContentProcessor:
@@ -256,19 +206,19 @@ class ContentProcessor:
         return text
 
     def tokenize(self, text: str) -> str:
-        words = text.split()
-        processed_words = []
-        for word in words:
-            if len(word) > 2 and word not in self.stop_words:
-                processed_words.append(self.stemmer.stem(word))
-        return ' '.join(processed_words)
+        return ' '.join(
+            self.stemmer.stem(word) for word in text.split() if len(word) > 2 and word not in self.stop_words)
 
 
 class SecurityEngine:
+    # Ampliação dos padrões de risco com novos termos associados a desinformação e promessas milagrosas
     RISK_PATTERNS = [
         (r"\b(vacina .* mata|cloroquina cura)\b", 0.8),
         (r"\b(senha|cpf|cart[ãa]o)\b", 0.3),
-        (r"\b(urgente!|promoção)\b", 0.2)
+        (r"\b(urgente!|promoção)\b", 0.2),
+        (r"\b(conspira[cç][aã]o|fake news|desinformação)\b", 0.5),
+        (r"\b(milagre|cura milagrosa|cura instantânea)\b", 0.7),
+        (r"\b(alerta vermelho|emergência)\b", 0.4)
     ]
 
     @classmethod
@@ -295,24 +245,20 @@ class CrawlerService:
         logger.info("Crawler inicializado com filtro Bloom")
 
     async def crawl_site(self, base_url: str):
-        logger.info("Iniciando crawling em: %s", base_url)
+        logger.info(f"Iniciando crawling em: {base_url}")
         async with aiohttp.ClientSession(
                 connector=aiohttp.TCPConnector(limit=DEFAULT_CONFIG["MAX_CONNECTIONS"]),
                 timeout=aiohttp.ClientTimeout(total=DEFAULT_CONFIG["REQUEST_TIMEOUT"])
         ) as session:
-            queue = deque([(base_url, 0)])
-
+            queue: deque[Tuple[str, int]] = deque([(base_url, 0)])
             while queue:
                 url, depth = queue.popleft()
-
                 with self.lock:
                     if url in self.visited_filter or depth > DEFAULT_CONFIG["MAX_DEPTH"]:
                         continue
                     self.visited_filter.add(url)
-
                 if not await self._should_process(url):
                     continue
-
                 success = await self._process_page(session, url)
                 if success:
                     new_links = await self._extract_links(session, url, depth)
@@ -321,14 +267,12 @@ class CrawlerService:
 
     async def _should_process(self, url: str) -> bool:
         if not is_valid_dns(url):
-            logger.debug("DNS inválido: %s", url)
+            logger.debug(f"DNS inválido: {url}")
             return False
-
         parsed = urlparse(url)
         if not any(parsed.netloc.endswith(domain) for domain in ALLOWED_DOMAINS):
-            logger.debug("Domínio não permitido: %s", parsed.netloc)
+            logger.debug(f"Domínio não permitido: {parsed.netloc}")
             return False
-
         return True
 
     async def _process_page(self, session, url: str) -> bool:
@@ -337,22 +281,19 @@ class CrawlerService:
             if not content:
                 return False
             page = self._create_page(url, content)
-
             if page.safety_score > DEFAULT_CONFIG["SAFETY_THRESHOLD"] or page.trust_score < 0.6:
-                logger.debug("Conteúdo ignorado: %s", url)
+                logger.debug(f"Conteúdo ignorado: {url}")
                 return False
-
             self._save_page(page)
-            logger.info("Página indexada: %s", url)
+            logger.info(f"Página indexada: {url}")
             return True
-        except Exception as e:
-            logger.error("Erro no processamento de %s: %s", url, str(e))
+        except Exception as err:
+            logger.error(f"Erro no processamento de {url}: {err}")
             return False
 
     async def _fetch_page(self, session, url: str) -> Optional[str]:
         if USE_JS_RENDERING:
             return await self._render_js_page(url)
-
         retries = 3
         delay = 1
         for attempt in range(retries):
@@ -360,9 +301,9 @@ class CrawlerService:
                 async with session.get(url) as response:
                     if response.status == 200:
                         return await response.text()
-                    logger.warning("Status %s para %s", response.status, url)
-            except Exception as e:
-                logger.warning("Tentativa %d falhou para %s: %s", attempt + 1, url, e)
+                    logger.warning(f"Status {response.status} para {url}")
+            except Exception as err:
+                logger.warning(f"Tentativa {attempt + 1} falhou para {url}: {err}")
             await asyncio.sleep(delay)
             delay *= 2
         return None
@@ -371,8 +312,8 @@ class CrawlerService:
         loop = asyncio.get_event_loop()
         try:
             return await loop.run_in_executor(None, self._render_with_selenium, url)
-        except Exception as e:
-            logger.error("Erro no rendering JS para %s: %s", url, e)
+        except Exception as err:
+            logger.error(f"Erro no rendering JS para {url}: {err}")
             return None
 
     def _render_with_selenium(self, url: str) -> str:
@@ -381,6 +322,7 @@ class CrawlerService:
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        # Removido o ChromeDriverManager: utiliza apenas a configuração padrão
         driver = webdriver.Chrome(options=options)
         driver.get(url)
         content = driver.page_source
@@ -393,7 +335,6 @@ class CrawlerService:
         parsed = urlparse(url)
         title_tag = soup.find("title")
         title = title_tag.string.strip() if title_tag and title_tag.string else parsed.netloc
-
         return Page(
             url=url,
             title=title,
@@ -413,61 +354,62 @@ class CrawlerService:
         try:
             conn = DatabaseManager.get_connection()
             with conn:
-                conn.execute("""
-                    INSERT OR REPLACE INTO pages 
+                conn.execute(
+                    """INSERT OR REPLACE INTO pages 
                     (url, title, content, simplified_content, tokens, 
                      safety_score, trust_score, fact_check_rating, 
                      last_crawled, domain, checksum, reported)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    page.url,
-                    page.title,
-                    page.content,
-                    page.simplified_content,
-                    page.tokens,
-                    page.safety_score,
-                    page.trust_score,
-                    page.fact_check_rating,
-                    page.last_crawled,
-                    page.domain,
-                    page.checksum,
-                    page.reported
-                ))
-
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        page.url,
+                        page.title,
+                        page.content,
+                        page.simplified_content,
+                        page.tokens,
+                        page.safety_score,
+                        page.trust_score,
+                        page.fact_check_rating,
+                        page.last_crawled,
+                        page.domain,
+                        page.checksum,
+                        page.reported
+                    )
+                )
                 title_terms = self._extract_autocomplete_terms(page.title)
-                for term in title_terms:
-                    conn.execute("""
-                        INSERT INTO autocomplete_terms (term, count)
+                for term_item in title_terms:
+                    conn.execute(
+                        """INSERT INTO autocomplete_terms (term, count)
                         VALUES (?, 1)
-                        ON CONFLICT(term) DO UPDATE SET count = count + 1
-                    """, (term,))
-        except sqlite3.Error as e:
-            logger.error("Erro ao salvar página %s: %s", page.url, str(e))
+                        ON CONFLICT(term) DO UPDATE SET count = count + 1""",
+                        (term_item,)
+                    )
+        except sqlite3.Error as err:
+            logger.error(f"Erro ao salvar página {page.url}: {err}")
 
     def _extract_autocomplete_terms(self, text: str) -> List[str]:
-        text = unicodedata.normalize('NFKD', text).lower()
-        text = re.sub(r'[^\w\s]', '', text)
-        words = re.findall(r'\b\w{3,}\b', text)
+        normalized = unicodedata.normalize('NFKD', text).lower()
+        normalized = re.sub(r'[^\w\s]', '', normalized)
+        words = re.findall(r'\b\w{3,}\b', normalized)
         return [word for word in words if word not in self.processor.stop_words]
 
-    async def _extract_links(self, session, url: str, depth: int) -> List[tuple]:
+    async def _extract_links(self, session, url: str, depth: int) -> List[Tuple[str, int]]:
         try:
             content = await self._fetch_page(session, url)
             if not content:
                 return []
-
             soup = BeautifulSoup(content, 'html.parser')
-            links = []
+            links: List[Tuple[str, int]] = []
             for link in soup.find_all('a', href=True):
                 new_url = urljoin(url, link['href'])
                 if self._is_valid(new_url) and is_valid_dns(new_url):
                     links.append((new_url, depth + 1))
             return links
-        except Exception as e:
-            logger.warning("Erro ao extrair links de %s: %s", url, str(e))
+        except Exception as err:
+            logger.warning(f"Erro ao extrair links de {url}: {err}")
             return []
 
-    def _is_valid(self, url: str) -> bool:
+    @staticmethod
+    def _is_valid(url: str) -> bool:
         scheme = urlparse(url).scheme
         return scheme in ['http', 'https']
 
@@ -492,10 +434,8 @@ def assess_trust(text: str) -> float:
 
 def fact_check_url(url: str) -> str:
     trusted_domains = [
-        "gov.br", "ebc.com.br", "scielo.br", "cetic.br",
-        "ibge.gov.br", "fiocruz.br", "bcb.gov.br", "ipea.gov.br",
-        "mctic.gov.br", "senado.leg.br", "camara.leg.br", "in.gov.br",
-        "un.org", "scielo.org", "bbc.com"
+        "gov.br", "ibge.gov.br", "fiocruz.br", "in.gov.br", "ipea.gov.br", "bcb.gov.br",
+        "un.org", "who.int", "cdc.gov", "scielo.br", "nature.com", "science.org"
     ]
     domain = urlparse(url).netloc.lower()
     return "Verificado" if any(domain.endswith(td) for td in trusted_domains) else "Não verificado"
@@ -514,56 +454,51 @@ class SearchService:
             cur = conn.execute("SELECT title FROM pages")
             docs = [row[0] for row in cur.fetchall()]
             if docs:
-                logger.info("Treinando modelo com %d títulos", len(docs))
+                logger.info(f"Treinando modelo com {len(docs)} títulos")
                 self.vectorizer.fit(docs)
-        except sqlite3.Error as e:
-            logger.error("Falha na inicialização: %s", str(e))
+        except sqlite3.Error as err:
+            logger.error(f"Falha na inicialização: {err}")
 
     def search(self, query: str) -> List[SearchResult]:
-        logger.info("Nova busca: '%s'", query)
+        logger.info(f"Nova busca: '{query}'")
         self._initialize()
         processed_query = self._process_query(query)
         if not processed_query:
             return []
-
         try:
             query_vec = self.vectorizer.transform([processed_query])
         except ValueError:
             return []
-
         results = []
         conn = DatabaseManager.get_connection()
         try:
-            cur = conn.execute("""
-                SELECT url, title, safety_score, trust_score, fact_check_rating 
+            cur = conn.execute(
+                """SELECT url, title, safety_score, trust_score, fact_check_rating 
                 FROM pages 
-                WHERE safety_score < ? AND reported = 0
-            """, (DEFAULT_CONFIG["SAFETY_THRESHOLD"],))
-
+                WHERE safety_score < ? AND reported = 0""",
+                (DEFAULT_CONFIG["SAFETY_THRESHOLD"],)
+            )
             rows = cur.fetchall()
             if not rows:
                 return []
-
             docs = [row[1] for row in rows]
             doc_matrix = self.vectorizer.transform(docs)
             similarities = np.dot(doc_matrix, query_vec.T).toarray().flatten()
-
             query_tokens = set(processed_query.split())
-
             for i, sim in enumerate(similarities):
                 title = rows[i][1]
                 processed_title = self.processor.tokenize(self.processor.process_text(title))
                 title_tokens = set(processed_title.split())
-
                 if not query_tokens.intersection(title_tokens):
                     continue
-
                 safety_rating = "🟢 Seguro" if rows[i][2] < 0.3 else "🔴 Não verificado"
                 trust_value = rows[i][3]
-                trust_rating = ("✅ Confiável" if trust_value >= 0.8
-                                else "⚠️ Suspeito" if trust_value < 0.6
-                else "ℹ️ Mediano")
-
+                if trust_value >= 0.8:
+                    trust_rating = "✅ Confiável"
+                elif trust_value < 0.6:
+                    trust_rating = "⚠️ Suspeito"
+                else:
+                    trust_rating = "ℹ️ Mediano"
                 results.append(SearchResult(
                     url=rows[i][0],
                     title=title,
@@ -573,12 +508,11 @@ class SearchService:
                     trust_rating=trust_rating,
                     fact_check_rating=rows[i][4]
                 ))
-
-            results.sort(key=lambda x: (x.relevance, x.trust_rating), reverse=True)
+            trust_order = {"✅ Confiável": 2, "ℹ️ Mediano": 1, "⚠️ Suspeito": 0}
+            results.sort(key=lambda x: (x.relevance, trust_order.get(x.trust_rating, 1)), reverse=True)
             return results[:15]
-
-        except sqlite3.Error as e:
-            logger.error("Erro no banco de dados: %s", str(e))
+        except sqlite3.Error as err:
+            logger.error(f"Erro no banco de dados: {err}")
             return []
 
     def _process_query(self, query: str) -> str:
@@ -598,7 +532,7 @@ def index():
         query = request.form.get("query", "").strip()
         if query:
             results = SearchService().search(query)
-            logger.info("Consulta '%s' retornou %d resultados", query, len(results))
+            logger.info(f"Consulta '{query}' retornou {len(results)} resultados")
     return render_template("index.html",
                            results=results,
                            query=query,
@@ -614,34 +548,33 @@ def report():
             with conn:
                 conn.execute("UPDATE pages SET reported = 1 WHERE url = ?", (reported_url,))
             flash("Conteúdo reportado com sucesso!", "success")
-        except Exception as e:
+        except Exception:
             flash("Erro ao reportar o conteúdo", "danger")
     return redirect(url_for("index"))
 
 
 @app.route('/autocomplete')
 def autocomplete():
-    def normalize_term(term):
-        return unicodedata.normalize('NFKD', term).encode('ascii', 'ignore').decode('ascii').lower()
+    def normalize_text(text: str) -> str:
+        return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii').lower()
 
     raw_term = request.args.get('term', '')
-    term = normalize_term(raw_term)
-
-    if not term:
+    normalized_term = normalize_text(raw_term)
+    if not normalized_term:
         return jsonify([])
-
     try:
         conn = DatabaseManager.get_connection()
-        cur = conn.execute("""
-            SELECT term FROM autocomplete_terms
+        cur = conn.execute(
+            """SELECT term FROM autocomplete_terms
             WHERE term LIKE ? || '%'
             ORDER BY count DESC
-            LIMIT 10
-        """, (term,))
+            LIMIT 10""",
+            (normalized_term,)
+        )
         suggestions = [row[0] for row in cur.fetchall()]
         return jsonify(suggestions)
-    except sqlite3.Error as e:
-        logger.error("Erro na busca de autocompletar: %s", str(e))
+    except sqlite3.Error as err:
+        logger.error(f"Erro na busca de autocompletar: {err}")
         return jsonify([])
 
 
@@ -651,29 +584,28 @@ class DataInitializer:
         conn = DatabaseManager.get_connection()
         if conn.execute("SELECT COUNT(*) FROM pages").fetchone()[0] == 0:
             logger.info("Inicializando banco de dados...")
-            await DataInitializer._seed_content()
-            DataInitializer._add_fallback_content()
+            await DataInitializer.seed_content()
+            DataInitializer.add_fallback_content()
 
     @staticmethod
-    async def _seed_content():
+    async def seed_content():
         crawler = CrawlerService()
-        dynamic_seed_urls = await DataInitializer._discover_urls_async()
-        logger.info("Iniciando indexação de %d URLs", len(dynamic_seed_urls))
-
+        dynamic_seed_urls = await DataInitializer.discover_seed_urls()
+        logger.info(f"Iniciando indexação de {len(dynamic_seed_urls)} URLs")
         batch_size = 10
         for i in range(0, len(dynamic_seed_urls), batch_size):
             batch = dynamic_seed_urls[i:i + batch_size]
             await asyncio.gather(*(crawler.crawl_site(url) for url in batch))
 
     @staticmethod
-    async def _discover_urls_async():
+    async def discover_seed_urls() -> List[str]:
         async with aiohttp.ClientSession() as session:
             tasks = [discover_seed_urls_async(session, base) for base in DEFAULT_BASE_URLS]
             results = await asyncio.gather(*tasks)
             return list(set(chain.from_iterable(results)))
 
     @staticmethod
-    def _add_fallback_content():
+    def add_fallback_content():
         content = {
             "easblue://ajuda": (
                 "Central de Ajuda EasBlue:\n"
@@ -689,57 +621,55 @@ class DataInitializer:
             with conn:
                 for url, text in content.items():
                     processed = processor.process_text(text)
-                    conn.execute("""
-                        INSERT OR IGNORE INTO pages 
+                    conn.execute(
+                        """INSERT OR IGNORE INTO pages 
                         (url, title, content, simplified_content, tokens, 
                          safety_score, trust_score, fact_check_rating, 
                          last_crawled, domain, checksum, reported)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        url,
-                        "Ajuda EasBlue",
-                        processed,
-                        processed[:500],
-                        processor.tokenize(processed),
-                        0.0,
-                        1.0,
-                        "Verificado",
-                        datetime.now().isoformat(),
-                        "easblue.internal",
-                        SecurityEngine.generate_checksum(processed),
-                        0
-                    ))
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            url,
+                            "Ajuda EasBlue",
+                            processed,
+                            processed[:500],
+                            processor.tokenize(processed),
+                            0.0,
+                            1.0,
+                            "Verificado",
+                            datetime.now().isoformat(),
+                            "easblue.internal",
+                            SecurityEngine.generate_checksum(processed),
+                            0
+                        )
+                    )
             logger.info("Conteúdo interno adicionado")
-        except sqlite3.Error as e:
-            logger.error("Erro no conteúdo interno: %s", str(e))
+        except sqlite3.Error as err:
+            logger.error(f"Erro no conteúdo interno: {err}")
 
 
 async def background_tasks():
     logger.info("Iniciando tarefas em background")
     await DataInitializer.initialize()
-
     semaphore = asyncio.Semaphore(DEFAULT_CONFIG["MAX_CONNECTIONS"])
 
-    async def limited_crawl(url, crawler):
+    async def limited_crawl(url, crawl_service):
         async with semaphore:
-            await crawler.crawl_site(url)
+            await crawl_service.crawl_site(url)
 
     while True:
         try:
-            crawler = CrawlerService()
-            dynamic_seed_urls = await DataInitializer._discover_urls_async()
-
-            tasks = [limited_crawl(url, crawler) for url in dynamic_seed_urls]
+            crawl_service = CrawlerService()
+            dynamic_seed_urls = await DataInitializer.discover_seed_urls()
+            tasks = [limited_crawl(url, crawl_service) for url in dynamic_seed_urls]
             await asyncio.gather(*tasks)
-
             logger.info("Ciclo de atualização concluído")
             await asyncio.sleep(3600)
-        except Exception as e:
-            logger.error("Erro nas tarefas em background: %s", str(e))
+        except Exception as err:
+            logger.error(f"Erro nas tarefas em background: {err}")
             await asyncio.sleep(60)
 
 
-async def discover_seed_urls_async(session, base_url: str):
+async def discover_seed_urls_async(session, base_url: str) -> List[str]:
     try:
         async with session.get(base_url, timeout=10) as response:
             content = await response.text()
@@ -750,17 +680,15 @@ async def discover_seed_urls_async(session, base_url: str):
                 if any(domain.lower() in url.lower() for domain in ALLOWED_DOMAINS):
                     found_urls.add(url)
             return list(found_urls)
-    except Exception as e:
-        logger.error("Erro ao descobrir URLs: %s", str(e))
+    except Exception as err:
+        logger.error(f"Erro ao descobrir URLs: {err}")
         return []
 
 
 if __name__ == "__main__":
     DatabaseManager.get_connection()
-    DatabaseManager.setup_frontend_tables()
     threading.Thread(
         target=lambda: asyncio.run(background_tasks()),
         daemon=True
     ).start()
-    
-    app.run(host='127.0.0.1', port=80, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False, ssl_context='adhoc')
