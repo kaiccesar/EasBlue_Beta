@@ -1,835 +1,835 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-theme="light" data-bs-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EasBlue - Busca Inteligente e Segura</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css">
-    <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            --accent-blue: #3b82f6;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --bg-primary: #f8fafc;
-            --bg-secondary: #ffffff;
-            --border-color: #e2e8f0;
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --font-size: 1rem;
-            --font-family: 'Plus Jakarta Sans', sans-serif;
-            --line-height: 1.5;
-            --focus-ring: 2px solid var(--accent-blue);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EasBlue - Busca Inteligente e Segura</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css">
+  <style>
+    /* Variáveis de CSS */
+    :root {
+      --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      --accent-blue: #3b82f6;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --border-color: #e2e8f0;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font-size: 1rem;
+      --font-family: 'Plus Jakarta Sans', sans-serif;
+      --line-height: 1.5;
+      --focus-ring: 2px solid var(--accent-blue);
+    }
+    [data-theme="dark"] {
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --bg-primary: #1e293b;
+      --bg-secondary: #0f172a;
+      --border-color: #334155;
+      --primary-gradient: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+    }
+    [data-accessibility="high-contrast"] {
+      --primary-gradient: linear-gradient(135deg, #000000 0%, #222222 100%);
+      --text-primary: #000000;
+      --text-secondary: #333333;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f0f0f0;
+      --border-color: #000000;
+    }
+    [data-accessibility="dyslexia"] {
+      --font-family: 'OpenDyslexic', sans-serif;
+      --line-height: 1.8;
+      letter-spacing: 0.05em;
+    }
+    [data-accessibility="reduced-motion"] * {
+      transition: none !important;
+      animation: none !important;
+    }
+    /* Modo Simples: fontes e botões maiores */
+    [data-simplified="true"] body {
+      font-size: 1.2rem;
+    }
+    [data-simplified="true"] .btn {
+      padding: 0.75rem 1.5rem !important;
+      font-size: 1.1rem !important;
+    }
 
-        [data-theme="dark"] {
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --bg-primary: #1e293b;
-            --bg-secondary: #0f172a;
-            --border-color: #334155;
-            --primary-gradient: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-        }
+    /* Introdução animada */
+    #introOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-primary);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 1;
+      animation: fadeIn 0.5s ease;
+    }
+    .intro-magnifier {
+      width: 80px;
+      height: 80px;
+      animation: pulse 1.5s infinite;
+    }
+    /* Quando for disparada a animação final */
+    .intro-magnifier.move {
+      animation: moveToLogoModern 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    @keyframes pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes moveToLogoModern {
+      0% {
+        transform: scale(1) rotate(0deg) translate(0, 0);
+        opacity: 1;
+      }
+      100% {
+        /* Ajuste os valores de translate conforme a posição desejada do logo */
+        transform: scale(0.3) rotate(720deg) translate(-40vw, -35vh);
+        opacity: 0;
+      }
+    }
 
-        [data-accessibility="high-contrast"] {
-            --primary-gradient: linear-gradient(135deg, #000000 0%, #222222 100%);
-            --text-primary: #000000;
-            --text-secondary: #333333;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f0f0f0;
-            --border-color: #000000;
-        }
+    /* Estilos Gerais */
+    body {
+      font-family: var(--font-family);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background 0.3s ease, color 0.3s ease;
+      font-size: var(--font-size);
+      line-height: var(--line-height);
+    }
+    .keyboard-nav *:focus {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
 
-        [data-accessibility="dyslexia"] {
-            --font-family: 'OpenDyslexic', sans-serif;
-            --line-height: 1.8;
-            letter-spacing: 0.05em;
-        }
+    /* Logo e Navbar */
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+    .logo-mark {
+      width: 42px;
+      height: 42px;
+      background: var(--primary-gradient);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 4px 6px rgba(59, 130, 246, 0.15);
+    }
+    .logo-mark::after {
+      content: '';
+      position: absolute;
+      width: 110%;
+      height: 110%;
+      border: 2px solid rgba(59, 130, 246, 0.1);
+      border-radius: 14px;
+    }
+    .logo-symbol {
+      width: 24px;
+      height: 24px;
+      position: relative;
+    }
+    .logo-symbol .lupa {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      stroke: white;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+    }
+    .logo-text {
+      font-weight: 700;
+      font-size: 1.5rem;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .navbar {
+      background: rgba(var(--bg-secondary), 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-color);
+    }
 
-        [data-accessibility="reduced-motion"] * {
-            transition: none !important;
-            animation: none !important;
-        }
+    /* Container de Pesquisa e Resultados */
+    .search-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.03);
+      border: 1px solid var(--border-color);
+    }
+    .search-input {
+      border-radius: 14px;
+      padding: 1.25rem 2rem;
+      border: 2px solid var(--border-color);
+      font-size: 1.1rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.15);
+    }
+    .search-btn {
+      border-radius: 14px;
+      padding: 0 2.5rem;
+      background: var(--primary-gradient);
+      border: none;
+      font-weight: 600;
+      transition: transform 0.2s ease;
+    }
+    .result-card {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+      width: 100%;
+      overflow: hidden;
+    }
+    .result-card .d-flex {
+      min-width: 0;
+      gap: 1rem;
+    }
+    .result-card h5 a {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+    }
+    .result-card p {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+    }
+    .result-card .d-flex.align-items-center.justify-content-between {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .badge-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+    .safety-safe {
+      background: rgba(34,197,94,0.1);
+      color: var(--success);
+    }
+    .safety-warning {
+      background: rgba(245,158,11,0.1);
+      color: var(--warning);
+    }
+    .trust-high {
+      background: rgba(59,130,246,0.1);
+      color: var(--accent-blue);
+    }
+    .url-text {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+    .report-btn {
+      transition: all 0.2s ease;
+      background: rgba(239,68,68,0.1);
+      color: var(--danger);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: var(--bg-primary);
+      border-radius: 16px;
+      border: 2px dashed var(--border-color);
+      margin-top: 2rem;
+    }
+    .modal-content {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+    .autocomplete-container {
+      position: relative;
+      width: 100%;
+    }
+    .autocomplete-items {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 0 0 14px 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.03);
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
+    .autocomplete-item:hover {
+      background: var(--bg-primary);
+    }
+    .autocomplete-highlight {
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+    .tts-button {
+      background: rgba(59,130,246,0.1);
+      border: none;
+      border-radius: 8px;
+      padding: 4px 8px;
+    }
+    .color-picker {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      cursor: pointer;
+    }
+    .speech-status {
+      position: absolute;
+      right: 130px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
 
-        [data-simplified="true"] .visual-complex {
-            display: none !important;
-        }
-
-        body {
-            font-family: var(--font-family);
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: background 0.3s ease, color 0.3s ease;
-            font-size: var(--font-size);
-            line-height: var(--line-height);
-        }
-
-        .keyboard-nav *:focus {
-            outline: var(--focus-ring);
-            outline-offset: 2px;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-            transition: transform 0.3s ease;
-        }
-
-        .logo-mark {
-            width: 42px;
-            height: 42px;
-            background: var(--primary-gradient);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.15);
-        }
-
-        .logo-mark::after {
-            content: '';
-            position: absolute;
-            width: 110%;
-            height: 110%;
-            border: 2px solid rgba(59, 130, 246, 0.1);
-            border-radius: 14px;
-        }
-
-        .logo-symbol {
-            width: 24px;
-            height: 24px;
-            position: relative;
-        }
-
-        .logo-symbol .lupa {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            stroke: white;
-            stroke-width: 2;
-            fill: none;
-            stroke-linecap: round;
-        }
-
-        .logo-text {
-            font-weight: 700;
-            font-size: 1.5rem;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }
-
-        .navbar {
-            background: rgba(var(--bg-secondary), 0.95);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .search-container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background: var(--bg-secondary);
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.03);
-            border: 1px solid var(--border-color);
-        }
-
-        .search-input {
-            border-radius: 14px;
-            padding: 1.25rem 2rem;
-            border: 2px solid var(--border-color);
-            font-size: 1.1rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .search-input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-        }
-
-        .search-btn {
-            border-radius: 14px;
-            padding: 0 2.5rem;
-            background: var(--primary-gradient);
-            border: none;
-            font-weight: 600;
-            transition: transform 0.2s ease;
-        }
-
-        .result-card {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border: 1px solid var(--border-color);
-            transition: all 0.2s ease;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        .result-card .d-flex {
-            min-width: 0;
-            gap: 1rem;
-        }
-
-        .result-card h5 a {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            word-break: break-word;
-        }
-
-        .result-card p {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            word-break: break-word;
-        }
-
-        .result-card .d-flex.align-items-center.justify-content-between {
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        .badge-icon {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-        }
-
-        .safety-safe {
-            background: rgba(34, 197, 94, 0.1);
-            color: var(--success);
-        }
-
-        .safety-warning {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
-        }
-
-        .trust-high {
-            background: rgba(59, 130, 246, 0.1);
-            color: var(--accent-blue);
-        }
-
-        .url-text {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 100%;
-        }
-
-        .report-btn {
-            transition: all 0.2s ease;
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-            border-radius: 8px;
-            padding: 6px 12px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            background: var(--bg-primary);
-            border-radius: 16px;
-            border: 2px dashed var(--border-color);
-            margin-top: 2rem;
-        }
-
-        .modal-content {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .autocomplete-container {
-            position: relative;
-            width: 100%;
-        }
-
-        .autocomplete-items {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 0 0 14px 14px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.03);
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .autocomplete-item {
-            padding: 12px 20px;
-            cursor: pointer;
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-        }
-
-        .autocomplete-item:hover {
-            background: var(--bg-primary);
-        }
-
-        .autocomplete-highlight {
-            color: var(--accent-blue);
-            font-weight: 600;
-        }
-
-        .vlibras-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-
-        .tts-button {
-            background: rgba(59, 130, 246, 0.1);
-            border: none;
-            border-radius: 8px;
-            padding: 4px 8px;
-        }
-
-        .color-picker {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            border: 2px solid var(--border-color);
-            cursor: pointer;
-        }
-
-        .speech-status {
-            position: absolute;
-            right: 130px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        @media (max-width: 768px) {
-            .logo-text {
-                display: none;
-            }
-
-            .search-container {
-                margin: 1rem;
-                padding: 1.5rem;
-                border-radius: 16px;
-            }
-
-            .search-input {
-                padding: 1rem 1.5rem;
-                font-size: 1rem;
-            }
-
-            .result-card {
-                padding: 1rem;
-            }
-
-            .result-card h5 a {
-                -webkit-line-clamp: 3;
-            }
-
-            .result-card p {
-                -webkit-line-clamp: 2;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                transition: none !important;
-                animation: none !important;
-            }
-        }
-
-        @font-face {
-            font-family: 'OpenDyslexic';
-            src: url('https://dyslexicfonts.com/fonts/OpenDyslexic-Regular.woff2') format('woff2');
-            font-display: swap;
-        }
-    </style>
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .logo-text { display: none; }
+      .search-container { margin: 1rem; padding: 1.5rem; border-radius: 16px; }
+      .search-input { padding: 1rem 1.5rem; font-size: 1rem; }
+      .result-card { padding: 1rem; }
+      .result-card h5 a { -webkit-line-clamp: 3; }
+      .result-card p { -webkit-line-clamp: 2; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+    /* Importação de fonte para dislexia */
+    @font-face {
+      font-family: 'OpenDyslexic';
+      src: url('https://dyslexicfonts.com/fonts/OpenDyslexic-Regular.woff2') format('woff2');
+      font-display: swap;
+    }
+  </style>
 </head>
 <body>
-    <div vw class="enabled vlibras-btn">
-        <div vw-access-button class="btn btn-primary"></div>
+  <!-- Introdução animada (executada apenas no primeiro acesso) -->
+  <div id="introOverlay">
+    <div class="intro-magnifier">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="8" stroke="var(--accent-blue)" stroke-width="2" fill="none"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round"></line>
+      </svg>
     </div>
+  </div>
 
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="logo-container" href="#" aria-label="Página inicial">
-                <div class="logo-mark">
-                    <div class="logo-symbol">
-                        <svg class="lupa" viewBox="0 0 24 24" aria-hidden="true">
-                            <circle cx="11" cy="11" r="8"/>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                        </svg>
-                    </div>
-                </div>
-                <span class="logo-text">EasBlue</span>
-            </a>
-            <div class="d-flex gap-3">
-                <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal" aria-label="Configurações">
-                    <i class="mdi mdi-cog"></i>
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="logo-container" href="#" aria-label="Página inicial">
+        <div class="logo-mark">
+          <div class="logo-symbol">
+            <svg class="lupa" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+        </div>
+        <span class="logo-text">EasBlue</span>
+      </a>
+      <div class="d-flex gap-3">
+        <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal" aria-label="Configurações">
+          <i class="mdi mdi-cog"></i>
+        </button>
+        <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#aboutModal">
+          Sobre
+        </button>
+        <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#helpModal">
+          Ajuda
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Modal de Configurações -->
+  <div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Configurações de Acessibilidade</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-item mb-4">
+            <div>
+              <h6>Modo Escuro</h6>
+              <small class="text-secondary">Melhor contraste para baixa visão</small>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="themeSwitch">
+            </div>
+          </div>
+          <div class="settings-item mb-4">
+            <div>
+              <h6>Tamanho do Texto</h6>
+              <small class="text-secondary">Aumentar/diminuir fonte</small>
+            </div>
+            <input type="range" class="form-range" id="fontSize" min="0.8" max="1.5" step="0.1" value="1">
+          </div>
+          <div class="settings-item mb-4">
+            <div>
+              <h6>Alto Contraste</h6>
+              <small class="text-secondary">Otimizar para daltonismo</small>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="highContrast">
+            </div>
+          </div>
+          <div class="settings-item mb-4">
+            <div>
+              <h6>Reduzir Animação</h6>
+              <small class="text-secondary">Desativar transições</small>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="reduceMotion">
+            </div>
+          </div>
+          <div class="settings-item mb-4">
+            <div>
+              <h6>Fonte Legível</h6>
+              <small class="text-secondary">Para dislexia</small>
+            </div>
+            <select class="form-select" id="dyslexiaFont">
+              <option value="default">Fonte Padrão</option>
+              <option value="dyslexia">OpenDyslexic</option>
+            </select>
+          </div>
+          <div class="settings-item mb-4">
+            <div>
+              <h6>Modo Simples</h6>
+              <small class="text-secondary">Interface simplificada para fácil navegação</small>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="simpleMode">
+            </div>
+          </div>
+          <div class="settings-item">
+            <div>
+              <h6>Teclas de Atalho</h6>
+              <small class="text-secondary">Ativar navegação por teclado</small>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="keyboardNav">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Sobre -->
+  <div class="modal fade" id="aboutModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Sobre o EasBlue</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="about-card">
+            <h5>Missão</h5>
+            <p class="text-secondary">
+              Oferecer acesso à informação com segurança e transparência,
+              combatendo a desinformação através da tecnologia.
+            </p>
+          </div>
+          <div class="about-card">
+            <h5>Recursos</h5>
+            <ul class="text-secondary">
+              <li>Verificação de fatos em tempo real</li>
+              <li>Classificação de segurança automática</li>
+              <li>Filtragem de conteúdo inadequado</li>
+              <li>Atualizações diárias de segurança</li>
+            </ul>
+          </div>
+          <div class="about-card">
+            <h5>Versão</h5>
+            <p class="text-secondary">
+              EasBlue 2.1.0<br>
+              Última atualização: 15/02/2025
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ajuda -->
+  <div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Central de Ajuda</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="accordion" id="helpAccordion">
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#help1">
+                  Como usar a pesquisa?
                 </button>
-                <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#aboutModal">
-                    Sobre
+              </h2>
+              <div id="help1" class="accordion-collapse collapse show">
+                <div class="accordion-body">
+                  Digite seus termos de pesquisa na caixa principal e clique em "Pesquisar".
+                  Use aspas para pesquisas exatas e operadores como OR para refinar resultados.
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help2">
+                  Como reportar conteúdo?
                 </button>
-                <button class="btn btn-link text-secondary" data-bs-toggle="modal" data-bs-target="#helpModal">
-                    Ajuda
+              </h2>
+              <div id="help2" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  Clique no botão "Reportar" em qualquer resultado. Nossa equipe analisará
+                  o conteúdo dentro de 48 horas.
+                </div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help3">
+                  O que significam os ícones de segurança?
                 </button>
-            </div>
-        </div>
-    </nav>
-
-    <div class="modal fade" id="settingsModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Configurações de Acessibilidade</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </h2>
+              <div id="help3" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <div class="d-flex gap-2 mb-2">
+                    <span class="badge-icon safety-safe">
+                      <i class="mdi mdi-shield-check"></i> Seguro
+                    </span>
+                    - Conteúdo verificado e confiável
+                  </div>
+                  <div class="d-flex gap-2">
+                    <span class="badge-icon safety-warning">
+                      <i class="mdi mdi-alert-circle"></i> Não verificado
+                    </span>
+                    - Conteúdo requer análise
+                  </div>
                 </div>
-                <div class="modal-body">
-                    <div class="settings-item mb-4">
-                        <div>
-                            <h6>Modo Escuro</h6>
-                            <small class="text-secondary">Melhor contraste para baixa visão</small>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="themeSwitch">
-                        </div>
-                    </div>
-
-                    <div class="settings-item mb-4">
-                        <div>
-                            <h6>Tamanho do Texto</h6>
-                            <small class="text-secondary">Aumentar/diminuir fonte</small>
-                        </div>
-                        <input type="range" class="form-range" id="fontSize" min="0.8" max="1.5" step="0.1" value="1">
-                    </div>
-
-                    <div class="settings-item mb-4">
-                        <div>
-                            <h6>Alto Contraste</h6>
-                            <small class="text-secondary">Otimizar para daltonismo</small>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="highContrast">
-                        </div>
-                    </div>
-
-                    <div class="settings-item mb-4">
-                        <div>
-                            <h6>Reduzir Animação</h6>
-                            <small class="text-secondary">Desativar transições</small>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="reduceMotion">
-                        </div>
-                    </div>
-
-                    <div class="settings-item mb-4">
-                        <div>
-                            <h6>Fonte Legível</h6>
-                            <small class="text-secondary">Para dislexia</small>
-                        </div>
-                        <select class="form-select" id="dyslexiaFont">
-                            <option value="default">Fonte Padrão</option>
-                            <option value="dyslexia">OpenDyslexic</option>
-                        </select>
-                    </div>
-
-                    <div class="settings-item">
-                        <div>
-                            <h6>Teclas de Atalho</h6>
-                            <small class="text-secondary">Ativar navegação por teclado</small>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="keyboardNav">
-                        </div>
-                    </div>
-                </div>
+              </div>
             </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help4">
+                  Recursos de Acessibilidade
+                </button>
+              </h2>
+              <div id="help4" class="accordion-collapse collapse">
+                <div class="accordion-body">
+                  <div class="d-flex flex-column gap-2">
+                    <div>
+                      <strong>Atalhos do Teclado:</strong><br>
+                      Tab - Navegar entre elementos<br>
+                      Enter - Ativar elemento
+                    </div>
+                    <div>
+                      <strong>Configurações Disponíveis:</strong><br>
+                      • Ajuste de tamanho de texto<br>
+                      • Modo alto contraste<br>
+                      • Fontes para dislexia<br>
+                      • Redução de movimento<br>
+                      • Modo Simples
+                    </div>
+                    <div>
+                      <strong>Navegação:</strong><br>
+                      Use as setas para navegar em listas<br>
+                      ESC fecha modais
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 
-    <div class="modal fade" id="aboutModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Sobre o EasBlue</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="about-card">
-                        <h5>Missão</h5>
-                        <p class="text-secondary">
-                            Oferecer acesso à informação com segurança e transparência,
-                            combatendo a desinformação através da tecnologia.
-                        </p>
-                    </div>
-
-                    <div class="about-card">
-                        <h5>Recursos</h5>
-                        <ul class="text-secondary">
-                            <li>Verificação de fatos em tempo real</li>
-                            <li>Classificação de segurança automática</li>
-                            <li>Filtragem de conteúdo inadequado</li>
-                            <li>Atualizações diárias de segurança</li>
-                        </ul>
-                    </div>
-
-                    <div class="about-card">
-                        <h5>Versão</h5>
-                        <p class="text-secondary">
-                            EasBlue 2.1.0<br>
-                            Última atualização: 15/02/2025
-                        </p>
-                    </div>
-                </div>
-            </div>
+  <!-- Conteúdo Principal -->
+  <main class="container">
+    <div class="search-container">
+      <form method="POST" action="{{ url_for('index') }}">
+        <div class="input-group autocomplete-container">
+          <input type="text"
+                 name="query"
+                 class="form-control search-input"
+                 placeholder="O que você está procurando hoje?"
+                 value="{{ query }}"
+                 autocomplete="off"
+                 id="searchInput"
+                 autofocus>
+          <div class="speech-status" id="speechStatus"></div>
+          <button type="button" class="btn btn-secondary" id="voiceBtn">
+            <i class="mdi mdi-microphone"></i>
+          </button>
+          <div class="autocomplete-items" id="autocompleteItems"></div>
+          <button type="submit" class="btn btn-primary search-btn">
+            <i class="mdi mdi-magnify"></i> Pesquisar
+          </button>
         </div>
-    </div>
+      </form>
 
-    <div class="modal fade" id="helpModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Central de Ajuda</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="accordion" id="helpAccordion">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#help1">
-                                    Como usar a pesquisa?
-                                </button>
-                            </h2>
-                            <div id="help1" class="accordion-collapse collapse show">
-                                <div class="accordion-body">
-                                    Digite seus termos de pesquisa na caixa principal e clique em "Pesquisar".
-                                    Use aspas para pesquisas exatas e operadores como OR para refinar resultados.
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help2">
-                                    Como reportar conteúdo?
-                                </button>
-                            </h2>
-                            <div id="help2" class="accordion-collapse collapse">
-                                <div class="accordion-body">
-                                    Clique no botão "Reportar" em qualquer resultado. Nossa equipe analisará
-                                    o conteúdo dentro de 48 horas.
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help3">
-                                    O que significam os ícones de segurança?
-                                </button>
-                            </h2>
-                            <div id="help3" class="accordion-collapse collapse">
-                                <div class="accordion-body">
-                                    <div class="d-flex gap-2 mb-2">
-                                        <span class="badge-icon safety-safe">
-                                            <i class="mdi mdi-shield-check"></i> Seguro
-                                        </span>
-                                        - Conteúdo verificado e confiável
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <span class="badge-icon safety-warning">
-                                            <i class="mdi mdi-alert-circle"></i> Não verificado
-                                        </span>
-                                        - Conteúdo requer análise
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help4">
-                                    Recursos de Acessibilidade
-                                </button>
-                            </h2>
-                            <div id="help4" class="accordion-collapse collapse">
-                                <div class="accordion-body">
-                                    <div class="d-flex flex-column gap-2">
-                                        <div>
-                                            <strong>Atalhos do Teclado:</strong><br>
-                                            Tab - Navegar entre elementos<br>
-                                            Enter - Ativar elemento
-                                        </div>
-                                        <div>
-                                            <strong>Configurações Disponíveis:</strong><br>
-                                            • Ajuste de tamanho de texto<br>
-                                            • Modo alto contraste<br>
-                                            • Fontes para dislexia<br>
-                                            • Redução de movimento
-                                        </div>
-                                        <div>
-                                            <strong>Navegação:</strong><br>
-                                            Use as setas para navegar em listas<br>
-                                            ESC fecha modais
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      {% if results %}
+        <div class="mt-4 mb-3 text-muted fw-medium">
+          {{ results_count }} resultados encontrados
         </div>
-    </div>
-
-    <main class="container">
-        <div class="search-container">
-            <form method="POST" action="{{ url_for('index') }}">
-                <div class="input-group autocomplete-container">
-                    <input type="text"
-                           name="query"
-                           class="form-control search-input"
-                           placeholder="O que você está procurando hoje?"
-                           value="{{ query }}"
-                           autocomplete="off"
-                           id="searchInput"
-                           autofocus>
-                    <div class="speech-status" id="speechStatus"></div>
-                    <button type="button" class="btn btn-secondary" id="voiceBtn">
-                        <i class="mdi mdi-microphone"></i>
+        {% for result in results %}
+          <div class="result-card">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="d-flex flex-column gap-2">
+                <div class="url-text">
+                  {{ result.url }}
+                </div>
+                <h5 class="mb-1">
+                  <a href="{{ result.url }}" class="text-decoration-none text-dark fw-semibold" target="_blank">
+                    {{ result.title }}
+                  </a>
+                </h5>
+                <p class="mb-2 text-secondary">{{ result.snippet }}</p>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex gap-2">
+                    <span class="badge-icon safety-{{ 'safe' if result.safety_rating == '🟢 Seguro' else 'warning' }}">
+                      <i class="mdi mdi-{{ 'shield-check' if result.safety_rating == '🟢 Seguro' else 'alert-circle' }}"></i>
+                      {{ result.safety_rating.split(' ')[1] }}
+                    </span>
+                    <span class="badge-icon trust-high">
+                      <i class="mdi mdi-{{ 'check-decagram' if result.trust_rating == '✅ Confiável' else 'alert' }}"></i>
+                      {{ result.trust_rating.split(' ')[1] }}
+                    </span>
+                  </div>
+                  <form method="POST" action="{{ url_for('report') }}">
+                    <input type="hidden" name="url" value="{{ result.url }}">
+                    <button type="submit" class="btn btn-sm report-btn">
+                      <i class="mdi mdi-flag-outline"></i> Reportar
                     </button>
-                    <div class="autocomplete-items" id="autocompleteItems"></div>
-                    <button type="submit" class="btn btn-primary search-btn">
-                        <i class="mdi mdi-magnify"></i> Pesquisar
-                    </button>
+                  </form>
                 </div>
-            </form>
-
-            {% if results %}
-                <div class="mt-4 mb-3 text-muted fw-medium">
-                    {{ results_count }} resultados encontrados
-                </div>
-
-                {% for result in results %}
-                    <div class="result-card">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="d-flex flex-column gap-2">
-                                <div class="url-text">
-                                    {{ result.url }}
-                                </div>
-                                <h5 class="mb-1">
-                                    <a href="{{ result.url }}" class="text-decoration-none text-dark fw-semibold" target="_blank">
-                                        {{ result.title }}
-                                    </a>
-                                </h5>
-                                <p class="mb-2 text-secondary">{{ result.snippet }}</p>
-
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div class="d-flex gap-2">
-                                        <span class="badge-icon safety-{{ 'safe' if result.safety_rating == '🟢 Seguro' else 'warning' }}">
-                                            <i class="mdi mdi-{{ 'shield-check' if result.safety_rating == '🟢 Seguro' else 'alert-circle' }}"></i>
-                                            {{ result.safety_rating.split(' ')[1] }}
-                                        </span>
-                                        <span class="badge-icon trust-high">
-                                            <i class="mdi mdi-{{ 'check-decagram' if result.trust_rating == '✅ Confiável' else 'alert' }}"></i>
-                                            {{ result.trust_rating.split(' ')[1] }}
-                                        </span>
-                                    </div>
-                                    <form method="POST" action="{{ url_for('report') }}">
-                                        <input type="hidden" name="url" value="{{ result.url }}">
-                                        <button type="submit" class="btn btn-sm report-btn">
-                                            <i class="mdi mdi-flag-outline"></i> Reportar
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button class="tts-button" data-text="{{ result.snippet }}">
-                                    <i class="mdi mdi-volume-high"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            {% elif query %}
-                <div class="empty-state">
-                    <div class="mb-3">
-                        <i class="mdi mdi-magnify-remove" style="font-size: 3rem; color: #94a3b8;"></i>
-                    </div>
-                    <h5 class="text-secondary mb-3">Nenhum resultado para "{{ query }}"</h5>
-                    <div class="text-muted small">
-                        Sugestões:
-                        <div class="mt-2 d-flex flex-column gap-1">
-                            <span>• Verifique a ortografia das palavras</span>
-                            <span>• Tente termos mais gerais ou sinônimos</span>
-                            <span>• Use menos palavras-chave</span>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
+              </div>
+              <div class="d-flex gap-2">
+                <button class="tts-button" data-text="{{ result.snippet }}">
+                  <i class="mdi mdi-volume-high"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% elif query %}
+        <div class="empty-state">
+          <div class="mb-3">
+            <i class="mdi mdi-magnify-remove" style="font-size: 3rem; color: #94a3b8;"></i>
+          </div>
+          <h5 class="text-secondary mb-3">Nenhum resultado para "{{ query }}"</h5>
+          <div class="text-muted small">
+            Sugestões:
+            <div class="mt-2 d-flex flex-column gap-1">
+              <span>• Verifique a ortografia das palavras</span>
+              <span>• Tente termos mais gerais ou sinônimos</span>
+              <span>• Use menos palavras-chave</span>
+            </div>
+          </div>
         </div>
+      {% endif %}
+    </div>
+  </main>
 
-    </main>
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Animação de introdução: executa somente se não exibida anteriormente
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!localStorage.getItem('introShown')) {
+        const introOverlay = document.getElementById('introOverlay');
+        const magnifier = document.querySelector('.intro-magnifier');
+        // Após 2.5 segundos, dispara a animação que move a lupa para o logo
+        setTimeout(() => {
+          magnifier.classList.add('move');
+          magnifier.addEventListener('animationend', () => {
+            introOverlay.remove();
+            localStorage.setItem('introShown', 'true');
+          });
+        }, 2500);
+      } else {
+        const introOverlay = document.getElementById('introOverlay');
+        if (introOverlay) introOverlay.remove();
+      }
+      applySavedSettings();
+    });
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
-    <script>
-        class VoiceController {
-            constructor() {
-                this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-                this.recognition.lang = 'pt-BR';
-                this.recognition.interimResults = false;
+    // Controller de Voz para Pesquisa
+    class VoiceController {
+      constructor() {
+        this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        this.recognition.lang = 'pt-BR';
+        this.recognition.interimResults = false;
+        this.recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          document.getElementById('searchInput').value = transcript;
+          document.getElementById('speechStatus').innerHTML = '';
+        };
+        this.recognition.onerror = (event) => {
+          document.getElementById('speechStatus').innerHTML =
+            '<i class="mdi mdi-microphone-off text-danger"></i> Erro';
+          console.error('Erro no reconhecimento de voz:', event.error);
+        };
+      }
+      start() {
+        this.recognition.start();
+        document.getElementById('speechStatus').innerHTML =
+          '<i class="mdi mdi-microphone text-success"></i> Ouvindo...';
+      }
+    }
+    const voiceController = new VoiceController();
+    document.getElementById('voiceBtn').addEventListener('click', () => voiceController.start());
 
-                this.recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    document.getElementById('searchInput').value = transcript;
-                    document.getElementById('speechStatus').innerHTML = '';
-                };
+    // Botão de Texto para Fala (TTS)
+    document.querySelectorAll('.tts-button').forEach(button => {
+      button.addEventListener('click', () => {
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(button.dataset.text);
+        utterance.lang = 'pt-BR';
+        synth.speak(utterance);
+      });
+    });
 
-                this.recognition.onerror = (event) => {
-                    document.getElementById('speechStatus').innerHTML =
-                        '<i class="mdi mdi-microphone-off text-danger"></i> Erro';
-                    console.error('Erro no reconhecimento de voz:', event.error);
-                };
-            }
+    // Configurações de Acessibilidade
+    const applySavedSettings = () => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        document.getElementById('themeSwitch').checked = savedTheme === 'dark';
+      }
+      const savedFontSize = localStorage.getItem('fontSize');
+      if (savedFontSize) {
+        document.documentElement.style.fontSize = savedFontSize + 'rem';
+        document.getElementById('fontSize').value = savedFontSize;
+      }
+      const highContrast = localStorage.getItem('highContrast') === 'true';
+      if (highContrast) {
+        document.documentElement.setAttribute('data-accessibility', 'high-contrast');
+        document.getElementById('highContrast').checked = true;
+      }
+      const reduceMotion = localStorage.getItem('reduceMotion') === 'true';
+      if (reduceMotion) {
+        document.documentElement.setAttribute('data-accessibility', 'reduced-motion');
+        document.getElementById('reduceMotion').checked = true;
+      }
+      const dyslexiaFont = localStorage.getItem('dyslexiaFont');
+      if (dyslexiaFont === 'dyslexia') {
+        document.documentElement.setAttribute('data-accessibility', 'dyslexia');
+        document.getElementById('dyslexiaFont').value = 'dyslexia';
+      }
+      const simpleMode = localStorage.getItem('simpleMode') === 'true';
+      if (simpleMode) {
+        document.documentElement.setAttribute('data-simplified', 'true');
+        document.getElementById('simpleMode').checked = true;
+      }
+      const keyboardNav = localStorage.getItem('keyboardNav') === 'true';
+      document.body.classList.toggle('keyboard-nav', keyboardNav);
+      document.getElementById('keyboardNav').checked = keyboardNav;
+    };
 
-            start() {
-                this.recognition.start();
-                document.getElementById('speechStatus').innerHTML =
-                    '<i class="mdi mdi-microphone text-success"></i> Ouvindo...';
-            }
-        }
-
-        const voiceController = new VoiceController();
-
-        document.getElementById('voiceBtn').addEventListener('click', () => {
-            voiceController.start();
-        });
-
-        document.querySelectorAll('.tts-button').forEach(button => {
-            button.addEventListener('click', () => {
-                const synth = window.speechSynthesis;
-                const utterance = new SpeechSynthesisUtterance(button.dataset.text);
-                utterance.lang = 'pt-BR';
-                synth.speak(utterance);
-            });
-        });
-
-        new window.VLibras.Widget('https://vlibras.gov.br/app');
-
-        // Configurações de acessibilidade
-        const applySavedSettings = () => {
-            // Tema
-            const savedTheme = localStorage.getItem('theme');
-            if(savedTheme) {
-                document.documentElement.setAttribute('data-theme', savedTheme);
-                document.documentElement.setAttribute('data-bs-theme', savedTheme);
-                document.getElementById('themeSwitch').checked = savedTheme === 'dark';
-            }
-
-            // Tamanho da fonte
-            const savedFontSize = localStorage.getItem('fontSize');
-            if(savedFontSize) {
-                document.documentElement.style.fontSize = savedFontSize + 'rem';
-                document.getElementById('fontSize').value = savedFontSize;
-            }
-
-            // Alto contraste
-            const highContrast = localStorage.getItem('highContrast') === 'true';
-            if(highContrast) {
-                document.documentElement.setAttribute('data-accessibility', 'high-contrast');
-                document.getElementById('highContrast').checked = true;
-            }
-
-            // Redução de movimento
-            const reduceMotion = localStorage.getItem('reduceMotion') === 'true';
-            if(reduceMotion) {
-                document.documentElement.setAttribute('data-accessibility', 'reduced-motion');
-                document.getElementById('reduceMotion').checked = true;
-            }
-
-            // Fonte para dislexia
-            const dyslexiaFont = localStorage.getItem('dyslexiaFont');
-            if(dyslexiaFont === 'dyslexia') {
-                document.documentElement.setAttribute('data-accessibility', 'dyslexia');
-                document.getElementById('dyslexiaFont').value = 'dyslexia';
-            }
-
-            // Navegação por teclado
-            const keyboardNav = localStorage.getItem('keyboardNav') === 'true';
-            document.body.classList.toggle('keyboard-nav', keyboardNav);
-            document.getElementById('keyboardNav').checked = keyboardNav;
-        }
-
-        document.getElementById('themeSwitch').addEventListener('change', function(e) {
-            const newTheme = e.target.checked ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            document.documentElement.setAttribute('data-bs-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-        });
-
-        document.getElementById('fontSize').addEventListener('input', function(e) {
-            document.documentElement.style.fontSize = e.target.value + 'rem';
-            localStorage.setItem('fontSize', e.target.value);
-        });
-
-        document.getElementById('highContrast').addEventListener('change', function(e) {
-            if(e.target.checked) {
-                document.documentElement.setAttribute('data-accessibility', 'high-contrast');
-            } else {
-                document.documentElement.removeAttribute('data-accessibility');
-            }
-            localStorage.setItem('highContrast', e.target.checked);
-        });
-
-        document.getElementById('reduceMotion').addEventListener('change', function(e) {
-            if(e.target.checked) {
-                document.documentElement.setAttribute('data-accessibility', 'reduced-motion');
-            } else {
-                document.documentElement.removeAttribute('data-accessibility');
-            }
-            localStorage.setItem('reduceMotion', e.target.checked);
-        });
-
-        document.getElementById('dyslexiaFont').addEventListener('change', function(e) {
-            if(e.target.value === 'dyslexia') {
-                document.documentElement.setAttribute('data-accessibility', 'dyslexia');
-            } else {
-                document.documentElement.removeAttribute('data-accessibility');
-            }
-            localStorage.setItem('dyslexiaFont', e.target.value);
-        });
-
-        document.getElementById('keyboardNav').addEventListener('change', function(e) {
-            document.body.classList.toggle('keyboard-nav', e.target.checked);
-            localStorage.setItem('keyboardNav', e.target.checked);
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            applySavedSettings();
-            new window.VLibras.Widget('https://vlibras.gov.br/app');
-        });
-    </script>
+    document.getElementById('themeSwitch').addEventListener('change', function (e) {
+      const newTheme = e.target.checked ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      document.documentElement.setAttribute('data-bs-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+    });
+    document.getElementById('fontSize').addEventListener('input', function (e) {
+      document.documentElement.style.fontSize = e.target.value + 'rem';
+      localStorage.setItem('fontSize', e.target.value);
+    });
+    document.getElementById('highContrast').addEventListener('change', function (e) {
+      if (e.target.checked) {
+        document.documentElement.setAttribute('data-accessibility', 'high-contrast');
+      } else {
+        document.documentElement.removeAttribute('data-accessibility');
+      }
+      localStorage.setItem('highContrast', e.target.checked);
+    });
+    document.getElementById('reduceMotion').addEventListener('change', function (e) {
+      if (e.target.checked) {
+        document.documentElement.setAttribute('data-accessibility', 'reduced-motion');
+      } else {
+        document.documentElement.removeAttribute('data-accessibility');
+      }
+      localStorage.setItem('reduceMotion', e.target.checked);
+    });
+    document.getElementById('dyslexiaFont').addEventListener('change', function (e) {
+      if (e.target.value === 'dyslexia') {
+        document.documentElement.setAttribute('data-accessibility', 'dyslexia');
+      } else {
+        document.documentElement.removeAttribute('data-accessibility');
+      }
+      localStorage.setItem('dyslexiaFont', e.target.value);
+    });
+    document.getElementById('simpleMode').addEventListener('change', function (e) {
+      if (e.target.checked) {
+        document.documentElement.setAttribute('data-simplified', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-simplified');
+      }
+      localStorage.setItem('simpleMode', e.target.checked);
+    });
+    document.getElementById('keyboardNav').addEventListener('change', function (e) {
+      document.body.classList.toggle('keyboard-nav', e.target.checked);
+      localStorage.setItem('keyboardNav', e.target.checked);
+    });
+  </script>
 </body>
 </html>
