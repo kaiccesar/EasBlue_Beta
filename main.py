@@ -21,17 +21,15 @@ from nltk.stem import SnowballStemmer
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from pybloom_live import BloomFilter
-
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-# Configurações padrões atualizadas para selecionar sites mais confiáveis e factuais
 DEFAULT_CONFIG = {
-    "MAX_DEPTH": int(os.getenv("MAX_DEPTH", "2")),
-    "RATE_LIMIT": float(os.getenv("RATE_LIMIT", "1.5")),
-    "REQUEST_TIMEOUT": int(os.getenv("REQUEST_TIMEOUT", "10")),
-    "MAX_CONNECTIONS": int(os.getenv("MAX_CONNECTIONS", "30")),
-    "DB_PATH": os.getenv("DB_PATH", "Easblue_Prototipo.db"),
+    "MAX_DEPTH": int(os.getenv("MAX_DEPTH", "3")),
+    "RATE_LIMIT": float(os.getenv("RATE_LIMIT", "2")),
+    "REQUEST_TIMEOUT": int(os.getenv("REQUEST_TIMEOUT", "5")),
+    "MAX_CONNECTIONS": int(os.getenv("MAX_CONNECTIONS", "50")),
+    "DB_PATH": os.getenv("DB_PATH", "Easblue_Beta.db"),
     "SAFETY_THRESHOLD": float(os.getenv("SAFETY_THRESHOLD", "0.3")),
     "BLOOM_FILTER_CAPACITY": 500000,
     "BLOOM_ERROR_RATE": 0.001
@@ -42,7 +40,6 @@ USE_ADVANCED_NLP = os.getenv("USE_ADVANCED_NLP", "False").lower() == "true"
 
 sqlite3.register_adapter(datetime, lambda dt: dt.isoformat())
 
-# Sites base com foco em fontes institucionais, governamentais e factuais
 DEFAULT_BASE_URLS = [
     "https://www.gov.br/pt-br/noticias",
     "https://www.ibge.gov.br",
@@ -58,7 +55,6 @@ DEFAULT_BASE_URLS = [
     "https://www.science.org"
 ]
 
-# Domínios permitidos, focando em fontes seguras e institucionais
 ALLOWED_DOMAINS = [
     "gov.br", "ibge.gov.br", "fiocruz.br", "in.gov.br", "ipea.gov.br", "bcb.gov.br",
     "un.org", "who.int", "cdc.gov", "scielo.br", "nature.com", "science.org"
@@ -211,7 +207,6 @@ class ContentProcessor:
 
 
 class SecurityEngine:
-    # Ampliação dos padrões de risco com novos termos associados a desinformação e promessas milagrosas
     RISK_PATTERNS = [
         (r"\b(vacina .* mata|cloroquina cura)\b", 0.8),
         (r"\b(senha|cpf|cart[ãa]o)\b", 0.3),
@@ -322,7 +317,6 @@ class CrawlerService:
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        # Removido o ChromeDriverManager: utiliza apenas a configuração padrão
         driver = webdriver.Chrome(options=options)
         driver.get(url)
         content = driver.page_source
